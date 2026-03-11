@@ -1,0 +1,103 @@
+.home-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* ── Top bar ────────────────────────────────────────────── */
+.home-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 52px 24px 0;
+  flex-shrink: 0;
+}
+
+.home-wordmark {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
+.home-settings-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  transition: color 0.15s ease;
+  margin-right: -8px;
+}
+
+.home-settings-btn:hover {
+  color: var(--text-secondary);
+}
+
+/* ── Center zone ────────────────────────────────────────── */
+.home-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 0;
+}
+
+.halo-container {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-btn {
+  position: relative;
+  z-index: 1;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #161616;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.record-btn:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.04);
+}
+
+.record-btn:active {
+  transform: scale(0.95);
+  border-color: rgba(255, 255, 255, 0.44);
+}
+
+.record-btn-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.home-hint {
+  margin-top: 20px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  font-family: var(--font-ui);
+  user-select: none;
+}

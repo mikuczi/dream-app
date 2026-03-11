@@ -1,0 +1,501 @@
+.onboarding-screen {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Top nav ────────────────────────────────────────────── */
+.onboarding-topnav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 52px 24px 0;
+}
+
+.onboarding-skip,
+.onboarding-next {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 8px 4px;
+  transition: color 0.15s ease;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.onboarding-skip:hover,
+.onboarding-next:hover {
+  color: var(--text-primary);
+}
+
+.onboarding-next {
+  color: var(--text-primary);
+}
+
+/* ── Slides track ───────────────────────────────────────── */
+.onboarding-slides {
+  display: flex;
+  width: 500%; /* 5 slides */
+  height: 100%;
+  transition: transform 0.42s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.onboarding-slide {
+  width: 20%; /* 1/5 of track */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 32px;
+  padding-top: 80px;
+  padding-bottom: 100px;
+  gap: 40px;
+}
+
+/* ── Visual areas ───────────────────────────────────────── */
+.ob-visual {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Slide 1 — concentric rings */
+.ob-visual-1 {
+  height: 240px;
+}
+
+.ob-concentric {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ob-ring {
+  position: absolute;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.08);
+  animation: obPulse 4s ease-in-out infinite;
+}
+
+.ob-ring-1 {
+  width: 60px;
+  height: 60px;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.32);
+  animation-delay: 0s;
+}
+
+.ob-ring-2 {
+  width: 100px;
+  height: 100px;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.16);
+  animation-delay: 0.5s;
+}
+
+.ob-ring-3 {
+  width: 148px;
+  height: 148px;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.09);
+  animation-delay: 1s;
+}
+
+.ob-ring-4 {
+  width: 196px;
+  height: 196px;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.04);
+  animation-delay: 1.5s;
+}
+
+@keyframes obPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.6; }
+}
+
+/* Slide 2 — mic rings */
+.ob-visual-2 {
+  height: 240px;
+}
+
+.ob-mic-rings {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ob-mic-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: obMicPulse 2.4s ease-in-out infinite;
+}
+
+.ob-mic-ring-1 {
+  width: 80px;
+  height: 80px;
+  border-color: rgba(255, 255, 255, 0.22);
+  animation-delay: 0s;
+}
+
+.ob-mic-ring-2 {
+  width: 124px;
+  height: 124px;
+  border-color: rgba(255, 255, 255, 0.12);
+  animation-delay: 0.4s;
+}
+
+.ob-mic-ring-3 {
+  width: 172px;
+  height: 172px;
+  border-color: rgba(255, 255, 255, 0.05);
+  animation-delay: 0.8s;
+}
+
+.ob-mic-center {
+  position: relative;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ob-mic-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+@keyframes obMicPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.06); opacity: 0.4; }
+}
+
+/* Slide 3 — moon row */
+.ob-visual-3 {
+  height: 120px;
+}
+
+.ob-moon-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ob-moon-symbol {
+  font-size: 26px;
+  line-height: 1;
+}
+
+/* Slide 3 — connect */
+.ob-visual-connect {
+  height: 200px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ob-connect-pills {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.ob-platform-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 100px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.ob-platform-whatsapp.selected {
+  background: rgba(37, 211, 102, 0.12);
+  border-color: rgba(37, 211, 102, 0.35);
+  color: var(--text-primary);
+}
+
+.ob-platform-telegram.selected {
+  background: rgba(41, 182, 246, 0.12);
+  border-color: rgba(41, 182, 246, 0.35);
+  color: var(--text-primary);
+}
+
+.ob-platform-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.ob-platform-check {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.ob-phone-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  width: 100%;
+  max-width: 280px;
+  height: 48px;
+}
+
+.ob-phone-prefix {
+  padding: 0 12px;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--text-secondary);
+  border-right: 1px solid var(--border);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ob-phone-input {
+  flex: 1;
+  padding: 0 14px;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--text-primary);
+  background: transparent;
+  height: 100%;
+}
+
+.ob-phone-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ob-skip-link {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-tertiary);
+  padding: 8px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ob-skip-link:hover {
+  color: var(--text-secondary);
+}
+
+/* Slide 4 — chat mock */
+.ob-visual-4 {
+  height: 200px;
+}
+
+.ob-chat-mock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.ob-chat-bubble {
+  padding: 10px 14px;
+  border-radius: 18px;
+  max-width: 85%;
+}
+
+.ob-chat-user {
+  align-self: flex-end;
+  background: #1a3a2a;
+  border: 1px solid rgba(37, 211, 102, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ob-voice-wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+}
+
+.ob-wave-bar {
+  width: 2px;
+  background: #25D366;
+  border-radius: 1px;
+  opacity: 0.85;
+}
+
+.ob-chat-time {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: rgba(37, 211, 102, 0.7);
+  white-space: nowrap;
+}
+
+.ob-chat-bot {
+  align-self: flex-start;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.ob-chat-bot-text {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ── Text blocks ────────────────────────────────────────── */
+.ob-text-block {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ob-wordmark {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 52px;
+  font-weight: 400;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.ob-subtitle {
+  font-family: var(--font-ui);
+  font-size: 16px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.ob-heading {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.ob-body {
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.ob-sub {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── CTA (last slide) ───────────────────────────────────── */
+.ob-cta-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.ob-get-started-btn {
+  width: 100%;
+  height: 52px;
+  border-radius: 100px;
+  background: var(--text-primary);
+  color: var(--bg);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s ease;
+}
+
+.ob-get-started-btn:active {
+  opacity: 0.85;
+}
+
+.ob-signin-link {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 8px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s ease;
+}
+
+.ob-signin-link:hover {
+  color: var(--text-primary);
+}
+
+/* ── Dots ───────────────────────────────────────────────── */
+.onboarding-dots {
+  position: absolute;
+  bottom: max(40px, env(safe-area-inset-bottom, 40px));
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ob-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.2s ease, width 0.2s ease;
+  min-height: unset;
+  padding: 0;
+}
+
+.ob-dot.active {
+  background: var(--text-primary);
+  width: 18px;
+  border-radius: 3px;
+}

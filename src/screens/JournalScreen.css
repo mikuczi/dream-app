@@ -1,0 +1,405 @@
+.journal-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* When used as a tab (no back button), add tab bar padding */
+.journal-screen.journal-tab-mode {
+  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Header */
+.journal-header {
+  display: flex;
+  align-items: center;
+  padding: 52px 20px 16px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.journal-back-btn {
+  font-size: 13px;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  padding: 6px 4px;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.journal-back-btn:hover {
+  color: var(--text-primary);
+}
+
+.journal-header-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+/* View toggle */
+.journal-view-toggle {
+  margin-left: auto;
+  display: flex;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.journal-toggle-btn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  padding: 5px 10px;
+  transition: color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+}
+
+.journal-toggle-btn.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Filter chips */
+.journal-filter-row {
+  display: flex;
+  gap: 8px;
+  padding: 4px 16px 12px;
+  flex-shrink: 0;
+}
+
+.journal-filter-chip {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  padding: 5px 12px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: transparent;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.journal-filter-chip.active {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Scroll area */
+.journal-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0 40px;
+}
+
+.journal-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Empty state */
+.journal-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 48px 32px;
+}
+
+.journal-empty-text {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--text-tertiary);
+  text-align: center;
+  white-space: pre-line;
+}
+
+/* Dream list */
+.journal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 16px;
+}
+
+/* Dream card */
+.dream-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dream-card:hover {
+  border-color: var(--border-strong);
+}
+
+/* Card header row */
+.dream-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dream-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dream-card-date {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.dream-card-privacy {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  font-family: var(--font-ui);
+}
+
+.dream-card-mood {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+/* Title */
+.dream-card-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.3;
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+/* Excerpt */
+.dream-card-excerpt {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* Tags row */
+.dream-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.dream-card-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.dream-mini-tag {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 3px 8px;
+  font-weight: 400;
+}
+
+/* Clarity dots */
+.dream-card-clarity {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.clarity-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  transition: background 0.1s ease;
+}
+
+.clarity-dot.filled {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* ── Calendar view ───────────────────────────────────────── */
+.journal-calendar {
+  padding: 0 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.cal-month {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cal-month-header {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cal-day-header {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.06em;
+  text-align: center;
+  padding: 4px 0 8px;
+}
+
+.cal-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: default;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  background: none;
+}
+
+.cal-cell-empty {
+  pointer-events: none;
+}
+
+.cal-cell-today {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--bg-card);
+}
+
+.cal-cell-has-dreams {
+  cursor: pointer;
+}
+
+.cal-cell-has-dreams:hover {
+  background: var(--bg-card);
+}
+
+.cal-dot {
+  border-radius: 50%;
+  background: var(--text-primary);
+  transition: width 0.15s ease, height 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cal-cell:not(.cal-cell-has-dreams) .cal-dot {
+  background: var(--text-tertiary);
+}
+
+/* Day preview panel */
+.cal-day-preview {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.cal-day-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cal-day-preview-date {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.cal-day-preview-close {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  padding: 4px;
+  transition: color 0.15s ease;
+}
+
+.cal-day-preview-close:hover {
+  color: var(--text-primary);
+}
+
+.cal-day-dream-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cal-day-dream-row:last-child {
+  border-bottom: none;
+}
+
+.cal-day-dream-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.cal-day-dream-mood {
+  font-size: 14px;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.cal-day-dream-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.cal-day-dream-arrow {
+  font-size: 16px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
