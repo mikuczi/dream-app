@@ -7,9 +7,9 @@ interface JournalScreenProps {
   onBack?: () => void
   tabMode?: boolean
   onOpenDream?: (dream: Dream) => void
+  onAsk?: () => void
 }
 
-type ViewMode = 'list' | 'calendar'
 type FilterMode = 'all' | 'lucid' | 'recurring'
 
 const MOOD_SYMBOLS: Record<DreamMood, string> = {
@@ -20,10 +20,11 @@ const MOOD_SYMBOLS: Record<DreamMood, string> = {
   strange: '∿',
 }
 
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
 function formatDate(isoString: string): string {
   const date = new Date(isoString)
   const now = new Date()
-
   const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today)
@@ -31,25 +32,28 @@ function formatDate(isoString: string): string {
 
   if (dateDay.getTime() === today.getTime()) return 'Today'
   if (dateDay.getTime() === yesterday.getTime()) return 'Yesterday'
-
   const diffDays = Math.round((today.getTime() - dateDay.getTime()) / 86400000)
   if (diffDays < 7) return `${diffDays} days ago`
-
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function formatDateLong(isoString: string): string {
-  const date = new Date(isoString)
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })
+  return new Date(isoString).toLocaleDateString('en-US', {
+    weekday: 'short', month: 'long', day: 'numeric',
+  })
+}
+
+function getDreamsForDay(dreams: Dream[], year: number, month: number, day: number): Dream[] {
+  return dreams.filter(d => {
+    const date = new Date(d.createdAt)
+    return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day
+  })
 }
 
 function DreamCard({ dream, onOpenDream }: { dream: Dream; onOpenDream?: (dream: Dream) => void }) {
-  const excerpt =
-    dream.transcript.length > 80
-      ? dream.transcript.slice(0, 80).trimEnd() + '…'
-      : dream.transcript
-
-  const visibleTags = dream.tags.slice(0, 3)
+  const excerpt = dream.transcript.length > 80
+    ? dream.transcript.slice(0, 80).trimEnd() + '…'
+    : dream.transcript
 
   return (
     <button
@@ -68,26 +72,17 @@ function DreamCard({ dream, onOpenDream }: { dream: Dream; onOpenDream?: (dream:
           </span>
         </div>
       </div>
-
       <div className="dream-card-title">{dream.title}</div>
-
       {excerpt && <div className="dream-card-excerpt">{excerpt}</div>}
-
       <div className="dream-card-meta">
         <div className="dream-card-tags">
-          {visibleTags.map((tag) => (
-            <span key={tag} className="dream-mini-tag">
-              {tag}
-            </span>
+          {dream.tags.slice(0, 3).map(tag => (
+            <span key={tag} className="dream-mini-tag">{tag}</span>
           ))}
         </div>
-
         <div className="dream-card-clarity">
           {Array.from({ length: 5 }, (_, i) => (
-            <div
-              key={i}
-              className={`clarity-dot ${i < dream.clarity ? 'filled' : ''}`}
-            />
+            <div key={i} className={`clarity-dot ${i < dream.clarity ? 'filled' : ''}`} />
           ))}
         </div>
       </div>
@@ -95,75 +90,49 @@ function DreamCard({ dream, onOpenDream }: { dream: Dream; onOpenDream?: (dream:
   )
 }
 
-function getDreamsForDay(dreams: Dream[], year: number, month: number, day: number): Dream[] {
-  return dreams.filter(d => {
-    const date = new Date(d.createdAt)
-    return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day
-  })
-}
-
 interface CalendarMonthProps {
   year: number
-  month: number // 0-indexed
+  month: number
   dreams: Dream[]
   todayDate: Date
-  onDayClick: (dreams: Dream[]) => void
+  selectedDay: Date | null
+  onDayClick: (dreams: Dream[], day: Date) => void
 }
 
-function CalendarMonth({ year, month, dreams, todayDate, onDayClick }: CalendarMonthProps) {
+function CalendarMonth({ year, month, dreams, todayDate, selectedDay, onDayClick }: CalendarMonthProps) {
   const monthName = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-
-  // Day of week for first of month (0=Sun, convert to Mon-based)
   const firstDay = new Date(year, month, 1).getDay()
-  const startOffset = (firstDay + 6) % 7 // Mon=0, Tue=1, ..., Sun=6
-
+  const startOffset = (firstDay + 6) % 7
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-
   const cells: Array<number | null> = [
     ...Array(startOffset).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ]
-
-  // Pad to full rows
   while (cells.length % 7 !== 0) cells.push(null)
-
-  const dayHeaders = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
   return (
     <div className="cal-month">
       <div className="cal-month-header">{monthName}</div>
       <div className="cal-grid">
-        {dayHeaders.map(d => (
+        {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(d => (
           <div key={d} className="cal-day-header">{d}</div>
         ))}
         {cells.map((day, idx) => {
-          if (day === null) {
-            return <div key={`empty-${idx}`} className="cal-cell cal-cell-empty" />
-          }
+          if (day === null) return <div key={`e-${idx}`} className="cal-cell cal-cell-empty" />
           const dayDreams = getDreamsForDay(dreams, year, month, day)
           const hasDreams = dayDreams.length > 0
-          const isToday =
-            todayDate.getFullYear() === year &&
-            todayDate.getMonth() === month &&
-            todayDate.getDate() === day
-
-          const dotSize = hasDreams ? Math.min(8 + dayDreams.length * 2, 13) : 6
-
+          const isToday   = todayDate.getFullYear() === year && todayDate.getMonth() === month && todayDate.getDate() === day
+          const dayDate   = new Date(year, month, day)
+          const isSelected = selectedDay?.getTime() === dayDate.getTime()
           return (
             <button
               key={day}
-              className={`cal-cell ${isToday ? 'cal-cell-today' : ''} ${hasDreams ? 'cal-cell-has-dreams' : ''}`}
-              onClick={() => hasDreams && onDayClick(dayDreams)}
+              className={`cal-cell ${isToday ? 'cal-cell-today' : ''} ${hasDreams ? 'cal-cell-has-dreams' : ''} ${isSelected ? 'cal-cell-selected' : ''}`}
+              onClick={() => hasDreams && onDayClick(dayDreams, dayDate)}
               disabled={!hasDreams}
             >
-              <div
-                className="cal-dot"
-                style={{
-                  width: dotSize,
-                  height: dotSize,
-                  opacity: hasDreams ? 1 : 0.2,
-                }}
-              />
+              <span className="cal-cell-num">{day}</span>
+              {hasDreams && <div className="cal-dot" />}
             </button>
           )
         })}
@@ -172,13 +141,13 @@ function CalendarMonth({ year, month, dreams, todayDate, onDayClick }: CalendarM
   )
 }
 
-export function JournalScreen({ dreams, onBack, tabMode = false, onOpenDream }: JournalScreenProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [filter, setFilter] = useState<FilterMode>('all')
-  const [calendarDayDreams, setCalendarDayDreams] = useState<Dream[] | null>(null)
+export function JournalScreen({ dreams, onBack, tabMode = false, onOpenDream, onAsk }: JournalScreenProps) {
+  const [filter,         setFilter]         = useState<FilterMode>('all')
+  const [showCalendar,   setShowCalendar]   = useState(false)
+  const [selectedDay,    setSelectedDay]    = useState<Date | null>(null)
+  const [calDayDreams,   setCalDayDreams]   = useState<Dream[] | null>(null)
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
 
   const sorted = useMemo(
     () => [...dreams].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
@@ -186,87 +155,96 @@ export function JournalScreen({ dreams, onBack, tabMode = false, onOpenDream }: 
   )
 
   const filtered = useMemo(() => {
-    if (filter === 'lucid') return sorted.filter(d => d.lucid)
-    if (filter === 'recurring') return sorted.filter(d => d.recurring)
-    return sorted
-  }, [sorted, filter])
+    let base = calDayDreams ?? sorted
+    if (filter === 'lucid')     return base.filter(d => d.lucid)
+    if (filter === 'recurring') return base.filter(d => d.recurring)
+    return base
+  }, [sorted, calDayDreams, filter])
 
-  // Build 3 months: current + 2 previous
+  // 7-day strip: rolling last 7 days ending today
+  const strip7 = useMemo(() =>
+    Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today)
+      d.setDate(today.getDate() - (6 - i))
+      return d
+    }),
+    [today]
+  )
+
+  // Calendar months: current first, then 2 previous
   const calMonths = useMemo(() => {
-    const months: Array<{ year: number; month: number }> = []
-    for (let i = 2; i >= 0; i--) {
+    return Array.from({ length: 3 }, (_, i) => {
       const d = new Date(today.getFullYear(), today.getMonth() - i, 1)
-      months.push({ year: d.getFullYear(), month: d.getMonth() })
-    }
-    return months
+      return { year: d.getFullYear(), month: d.getMonth() }
+    })
   }, [today])
 
-  function handleCalendarDayClick(dayDreams: Dream[]) {
-    setCalendarDayDreams(dayDreams)
+  function handleStripDayClick(day: Date) {
+    const y = day.getFullYear(), m = day.getMonth(), d = day.getDate()
+    const dayDreams = getDreamsForDay(dreams, y, m, d)
+    if (!dayDreams.length) return
+    if (selectedDay?.getTime() === day.getTime()) {
+      setSelectedDay(null); setCalDayDreams(null)
+    } else {
+      setSelectedDay(day); setCalDayDreams(dayDreams)
+    }
+  }
+
+  function handleCalDayClick(dayDreams: Dream[], day: Date) {
+    if (selectedDay?.getTime() === day.getTime()) {
+      setSelectedDay(null); setCalDayDreams(null)
+    } else {
+      setSelectedDay(day); setCalDayDreams(dayDreams)
+    }
   }
 
   return (
     <div className={`journal-screen screen ${tabMode ? 'journal-tab-mode' : ''}`}>
+
       {/* Header */}
       <div className="journal-header">
-        {onBack ? (
-          <button className="journal-back-btn" onClick={onBack} aria-label="Go back">
-            ← back
-          </button>
-        ) : (
-          <div style={{ width: 60 }} />
-        )}
+        {onBack
+          ? <button className="journal-back-btn" onClick={onBack}>← back</button>
+          : <div style={{ width: 60 }} />
+        }
         <span className="journal-header-title">Journal</span>
-        <div className="journal-view-toggle">
-          <button
-            className={`journal-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
-            onClick={() => setViewMode('list')}
-          >
-            ≡ List
-          </button>
-          <button
-            className={`journal-toggle-btn ${viewMode === 'calendar' ? 'active' : ''}`}
-            onClick={() => setViewMode('calendar')}
-          >
-            · Cal
-          </button>
-        </div>
+        <button
+          className={`journal-cal-btn ${showCalendar ? 'active' : ''}`}
+          onClick={() => setShowCalendar(v => !v)}
+          aria-label="Toggle calendar"
+        >
+          {showCalendar ? '✕' : '⊞'}
+        </button>
       </div>
 
-      {/* Content */}
       <div className="journal-scroll">
-        {viewMode === 'list' ? (
-          <>
-            {/* Filter chips */}
-            <div className="journal-filter-row">
-              {(['all', 'lucid', 'recurring'] as FilterMode[]).map(f => (
-                <button
-                  key={f}
-                  className={`journal-filter-chip ${filter === f ? 'active' : ''}`}
-                  onClick={() => setFilter(f)}
-                >
-                  {f === 'all' ? 'All' : f === 'lucid' ? 'Lucid' : 'Recurring'}
-                </button>
-              ))}
-            </div>
 
-            {filtered.length === 0 ? (
-              <div className="journal-empty">
-                <p className="journal-empty-text">
-                  {dreams.length === 0
-                    ? 'No dreams yet.\nYour dreams will appear here.'
-                    : 'No dreams match this filter.'}
-                </p>
-              </div>
-            ) : (
-              <div className="journal-list">
-                {filtered.map((dream) => (
-                  <DreamCard key={dream.id} dream={dream} onOpenDream={onOpenDream} />
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
+        {/* 7-day strip — always visible when not in full calendar mode */}
+        {!showCalendar && (
+          <div className="journal-strip-wrap">
+            <div className="journal-strip">
+              {strip7.map((day, i) => {
+                const hasDreams = getDreamsForDay(dreams, day.getFullYear(), day.getMonth(), day.getDate()).length > 0
+                const isToday   = day.getTime() === today.getTime()
+                const isSelected = selectedDay?.getTime() === day.getTime()
+                return (
+                  <button
+                    key={i}
+                    className={`strip-day ${isToday ? 'strip-day-today' : ''} ${isSelected ? 'strip-day-selected' : ''}`}
+                    onClick={() => handleStripDayClick(day)}
+                  >
+                    <span className="strip-day-label">{DAY_LABELS[day.getDay()]}</span>
+                    <span className="strip-day-num">{day.getDate()}</span>
+                    <div className={`strip-dot ${hasDreams ? 'has-dreams' : ''}`} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Full calendar */}
+        {showCalendar && (
           <div className="journal-calendar">
             {calMonths.map(({ year, month }) => (
               <CalendarMonth
@@ -275,46 +253,65 @@ export function JournalScreen({ dreams, onBack, tabMode = false, onOpenDream }: 
                 month={month}
                 dreams={dreams}
                 todayDate={today}
-                onDayClick={handleCalendarDayClick}
+                selectedDay={selectedDay}
+                onDayClick={handleCalDayClick}
               />
             ))}
-
-            {/* Mini list for selected day */}
-            {calendarDayDreams && calendarDayDreams.length > 0 && (
-              <div className="cal-day-preview">
-                <div className="cal-day-preview-header">
-                  <span className="cal-day-preview-date">
-                    {formatDateLong(calendarDayDreams[0].createdAt)}
-                  </span>
-                  <button
-                    className="cal-day-preview-close"
-                    onClick={() => setCalendarDayDreams(null)}
-                  >
-                    ✕
-                  </button>
-                </div>
-                {calendarDayDreams.map(dream => (
-                  <button
-                    key={dream.id}
-                    className="cal-day-dream-row"
-                    onClick={() => onOpenDream?.(dream)}
-                  >
-                    <span className="cal-day-dream-mood">{MOOD_SYMBOLS[dream.mood]}</span>
-                    <span className="cal-day-dream-title">{dream.title}</span>
-                    <span className="cal-day-dream-arrow">›</span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {dreams.length === 0 && (
-              <div className="journal-empty">
-                <p className="journal-empty-text">No dreams recorded yet.</p>
-              </div>
-            )}
           </div>
         )}
+
+        {/* Filter chips */}
+        <div className="journal-filter-row">
+          {(['all', 'lucid', 'recurring'] as FilterMode[]).map(f => (
+            <button
+              key={f}
+              className={`journal-filter-chip ${filter === f ? 'active' : ''}`}
+              onClick={() => setFilter(f)}
+            >
+              {f === 'all' ? 'All' : f === 'lucid' ? 'Lucid' : 'Recurring'}
+            </button>
+          ))}
+          {calDayDreams && (
+            <button
+              className="journal-filter-chip journal-clear-day"
+              onClick={() => { setSelectedDay(null); setCalDayDreams(null) }}
+            >
+              {selectedDay ? formatDateLong(selectedDay.toISOString()) : ''} ×
+            </button>
+          )}
+        </div>
+
+        {/* Dream list */}
+        {filtered.length === 0 ? (
+          <div className="journal-empty">
+            <p className="journal-empty-text">
+              {dreams.length === 0
+                ? 'No dreams yet.\nYour dreams will appear here.'
+                : 'No dreams match this filter.'}
+            </p>
+          </div>
+        ) : (
+          <div className="journal-list">
+            {filtered.map(dream => (
+              <DreamCard key={dream.id} dream={dream} onOpenDream={onOpenDream} />
+            ))}
+          </div>
+        )}
+
+        <div style={{ height: 80 }} />
       </div>
+
+      {/* Floating Ask Your Dreams button */}
+      {onAsk && (
+        <button className="journal-ask-fab" onClick={onAsk}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M5 5.5C5 4.4 5.9 3.5 7 3.5s2 .9 2 2c0 .8-.5 1.4-1.2 1.7C7.3 7.4 7 7.8 7 8.3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="7" cy="10" r="0.6" fill="currentColor"/>
+          </svg>
+          Ask Your Dreams
+        </button>
+      )}
     </div>
   )
 }

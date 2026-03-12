@@ -3,452 +3,339 @@
   flex-direction: column;
   height: 100%;
   background: var(--bg);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 90px;
 }
 
-.social-header {
-  padding: 56px 20px 12px;
+/* ── Stories strip ───────────────────────────────────────── */
+.social-stories-wrap {
+  padding: 52px 0 14px;
   flex-shrink: 0;
 }
 
-.social-title {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 28px;
-  font-weight: 400;
-  color: var(--text-primary);
-  line-height: 1;
-}
-
-.social-subtitle {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  color: var(--text-tertiary);
-  margin-top: 4px;
-}
-
-.social-scroll {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 24px;
-}
-
-/* ── Section ─────────────────────────────────────────────── */
-.social-section {
-  padding: 20px 20px 4px;
-}
-
-.social-section-title {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 14px;
-}
-
-/* ── Friend strip ────────────────────────────────────────── */
-.social-friends-strip {
+.social-stories-row {
   display: flex;
   gap: 16px;
   overflow-x: auto;
+  padding: 6px 16px 4px;
   scrollbar-width: none;
-  padding-bottom: 4px;
 }
-.social-friends-strip::-webkit-scrollbar { display: none; }
+.social-stories-row::-webkit-scrollbar { display: none; }
 
-.social-friend-chip {
+.story-avatar-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-}
-
-.social-avatar {
-  border-radius: 50%;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  font-family: var(--font-ui);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  flex-shrink: 0;
-}
-
-.social-avatar--active {
-  border-color: var(--border-strong);
-  background: var(--bg-elevated);
-}
-
-.social-add-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 1.5px dashed var(--border);
   background: transparent;
-  color: var(--text-tertiary);
-  font-size: 20px;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.story-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  padding: 2px;
 }
 
-.social-add-btn:active { color: var(--text-primary); border-color: var(--border-strong); }
-
-.social-friend-name {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  color: var(--text-secondary);
+.story-ring.unviewed {
+  background: conic-gradient(
+    from 0deg,
+    #b083f0,
+    #7bb3f4,
+    #f4c97b,
+    #b083f0
+  );
 }
 
-.social-friend-compat {
-  font-family: var(--font-ui);
-  font-size: 9px;
-  color: var(--text-tertiary);
+.story-ring.viewed {
+  background: var(--border);
 }
 
-/* ── Expanded friend card ────────────────────────────────── */
-.social-friend-card {
-  margin: 0 20px 4px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.story-ring-mine {
+  background: rgba(255,255,255,0.12);
 }
 
-.social-friend-card-header {
+.story-avatar-mine {
+  position: relative;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px dashed rgba(255,255,255,0.25);
+}
+
+.story-add-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  line-height: 1;
+  border: 1.5px solid var(--bg);
 }
 
-.social-friend-card-name {
-  font-family: var(--font-ui);
-  font-size: 15px;
+.story-avatar-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2.5px solid var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.story-avatar-initials {
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.social-friend-card-sign {
   font-family: var(--font-ui);
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
 }
 
-.social-friend-card-score {
-  margin-left: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+.story-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
-.social-compat-num {
-  font-family: var(--font-display);
-  font-size: 28px;
-  color: var(--text-primary);
-  line-height: 1;
-}
-
-.social-compat-label {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  color: var(--text-tertiary);
-}
-
-.social-shared-label {
-  font-family: var(--font-ui);
+.story-avatar-name {
   font-size: 11px;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Divider ─────────────────────────────────────────────── */
+.social-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* ── Feed header ─────────────────────────────────────────── */
+.social-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  flex-shrink: 0;
+}
+
+.social-feed-title {
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-tertiary);
-  margin-bottom: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.social-tags-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.social-tag-chip {
+  letter-spacing: 0.07em;
   font-family: var(--font-ui);
-  font-size: 11px;
-  color: var(--text-secondary);
+}
+
+.social-sort-tabs {
+  display: flex;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: 3px 10px;
+  padding: 2px;
+  gap: 2px;
 }
 
-.social-compat-desc {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
+.social-sort-btn {
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.social-sort-btn.active {
+  background: var(--bg);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
 
 /* ── Feed ────────────────────────────────────────────────── */
 .social-feed {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.social-feed-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px 16px;
-  text-align: left;
-  cursor: pointer;
-  width: 100%;
-  transition: border-color 0.15s;
-}
-
-.social-feed-card:active { border-color: var(--border-strong); }
-
-.social-feed-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.social-feed-friend {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.social-feed-sign {
-  font-weight: 400;
-  color: var(--text-tertiary);
-}
-
-.social-feed-date {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.social-feed-title {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 17px;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-  line-height: 1.2;
-}
-
-.social-feed-excerpt {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 10px;
-}
-
-.social-feed-footer {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.social-feed-mood {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.social-mini-tag {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  color: var(--text-tertiary);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 2px 8px;
-}
-
-.social-match-chip {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  color: var(--text-primary);
-  border: 1px solid var(--border-strong);
-  border-radius: 20px;
-  padding: 2px 8px;
-  margin-left: auto;
-}
-
-/* ── Shared patterns ─────────────────────────────────────── */
-.social-patterns {
-  display: flex;
-  flex-direction: column;
+  gap: 0;
+  padding: 0 12px;
   gap: 12px;
 }
 
-.social-empty-note {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  color: var(--text-tertiary);
-  font-style: italic;
-}
-
-.social-pattern-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.social-pattern-tag {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.social-pattern-friends {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.social-pattern-bar-wrap {
-  height: 2px;
-  background: var(--border);
-  border-radius: 1px;
+/* ── Feed card ───────────────────────────────────────────── */
+.feed-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
   overflow: hidden;
 }
 
-.social-pattern-bar {
-  height: 100%;
-  background: var(--text-secondary);
-  border-radius: 1px;
-  transition: width 0.4s ease;
-}
-
-/* ── Compatibility list ──────────────────────────────────── */
-.social-compat-list {
+.feed-card-visual {
+  height: 120px;
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.social-compat-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
-}
-
-.social-compat-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.social-compat-name {
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.social-compat-sign {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-top: 1px;
-}
-
-.social-compat-right {
-  display: flex;
-  flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  padding: 10px 12px;
 }
 
-.social-compat-dots {
-  display: flex;
-  gap: 3px;
+.feed-card-mood {
+  font-size: 20px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(0,0,0,0.5));
 }
 
-.social-compat-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--border-strong);
-}
-
-.social-compat-dot.filled {
-  background: var(--text-primary);
-}
-
-.social-compat-blurb {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  color: var(--text-tertiary);
-  text-align: right;
-  max-width: 120px;
-}
-
-/* ── Empty state ─────────────────────────────────────────── */
-.social-empty {
-  flex: 1;
+.feed-card-body {
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+.feed-card-user-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feed-card-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-elevated, #f0ede8);
+  border: 1px solid var(--border);
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
-  text-align: center;
-  gap: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  flex-shrink: 0;
 }
-.social-empty-icon {
-  font-size: 36px;
+
+.feed-card-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.feed-card-user-info {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.feed-card-username {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+}
+
+.feed-card-time {
+  font-size: 11px;
   color: var(--text-tertiary);
-  margin-bottom: 4px;
+  font-family: var(--font-ui);
 }
-.social-empty-heading {
+
+.feed-card-zodiac {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.feed-card-title {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 22px;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.feed-card-text {
+  font-size: 13px;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.feed-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.feed-card-tag {
+  font-size: 10px;
+  font-family: var(--font-ui);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+/* ── Feed actions ────────────────────────────────────────── */
+.feed-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.feed-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  padding: 4px 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s;
+}
+
+.feed-action-btn:active,
+.feed-action-btn.active {
   color: var(--text-primary);
 }
-.social-empty-sub {
-  font-family: var(--font-ui);
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  max-width: 260px;
+
+.feed-action-share {
+  margin-left: auto;
 }
-.social-invite-btn {
-  margin-top: 8px;
-  background: var(--text-primary);
-  color: var(--bg);
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 100px;
-  padding: 12px 28px;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-.social-invite-btn:active { opacity: 0.85; }

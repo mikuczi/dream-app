@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import './RecordingScreen.css'
+import { DreamHalo } from '../components/DreamHalo'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 
 interface RecordingScreenProps {
@@ -15,20 +16,12 @@ export function RecordingScreen({ onDone, onCancel }: RecordingScreenProps) {
   const { transcript, interimTranscript, isListening, isSupported, start, stop } =
     useSpeechRecognition()
 
-  // Start recognition on mount
   useEffect(() => {
-    if (isSupported) {
-      start()
-    }
-    return () => {
-      stop()
-    }
+    if (isSupported) start()
+    return () => { stop() }
   }, [isSupported, start, stop])
 
-  function handleCancel() {
-    stop()
-    onCancel()
-  }
+  function handleCancel() { stop(); onCancel() }
 
   function handleDone() {
     stop()
@@ -40,57 +33,48 @@ export function RecordingScreen({ onDone, onCancel }: RecordingScreenProps) {
   const hasContent = transcript.trim().length > 0 || interimTranscript.trim().length > 0
 
   return (
-    <div className="recording-screen screen">
-      {/* Header */}
-      <div className="recording-header">
-        <button
-          className="recording-cancel"
-          onClick={handleCancel}
-          aria-label="Cancel recording"
-        >
-          ×
-        </button>
-      </div>
+    <div className="recording-screen">
+      {/* Full-screen halo */}
+      <DreamHalo recording={isListening} />
 
-      {/* Status */}
-      {isSupported && (
-        <div className="recording-status">
-          {isListening ? (
-            <div className="recording-dots">
-              <div className="recording-dot" />
-              <div className="recording-dot" />
-              <div className="recording-dot" />
-            </div>
-          ) : (
-            <div style={{ height: 5 }} />
-          )}
-          <span className="recording-status-text">
-            {isListening ? 'listening…' : 'paused'}
-          </span>
-        </div>
-      )}
+      {/* Cancel */}
+      <button className="recording-cancel" onClick={handleCancel} aria-label="Cancel recording">×</button>
 
-      {/* Transcript */}
-      <div className="recording-transcript-area">
+      {/* Center content */}
+      <div className="recording-center">
+        {isSupported && (
+          <div className="recording-status">
+            {isListening ? (
+              <div className="recording-dots">
+                <div className="recording-dot" />
+                <div className="recording-dot" />
+                <div className="recording-dot" />
+              </div>
+            ) : (
+              <div style={{ height: 14 }} />
+            )}
+            <span className="recording-status-text">
+              {isListening ? 'listening…' : 'paused'}
+            </span>
+          </div>
+        )}
+
         {!isSupported ? (
           <p className="recording-unsupported">
-            Voice recognition is not supported in this browser.
-            <br />
-            <br />
+            Voice recognition is not supported in this browser.<br /><br />
             Please try Chrome, Edge, or Safari on iOS.
           </p>
         ) : !hasContent ? (
-          <>
+          <div className="recording-placeholder-wrap">
             <p className="recording-placeholder">Record your dream.</p>
             <p className="recording-cta-hint">Speak now — we're listening</p>
-          </>
+          </div>
         ) : (
           <p className="recording-transcript-text">
             {transcript}
             {interimTranscript && (
               <span className="recording-interim">
-                {transcript ? ' ' : ''}
-                {interimTranscript}
+                {transcript ? ' ' : ''}{interimTranscript}
               </span>
             )}
           </p>
@@ -100,7 +84,7 @@ export function RecordingScreen({ onDone, onCancel }: RecordingScreenProps) {
       {/* Bottom controls */}
       <div className="recording-bottom">
         <span className="recording-word-count">
-          {wordCount === 0 ? '' : `${wordCount} word${wordCount === 1 ? '' : 's'}`}
+          {wordCount > 0 ? `${wordCount} word${wordCount === 1 ? '' : 's'}` : ''}
         </span>
         <button
           className="recording-done-btn"

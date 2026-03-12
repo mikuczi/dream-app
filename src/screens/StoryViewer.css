@@ -1,0 +1,358 @@
+/* ─── Story Viewer ─────────────────────────────────────────────────────── */
+
+.story-viewer {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: #05060a;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Background gradient */
+.story-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transition: background 0.4s ease;
+}
+
+/* Top + bottom atmospheric overlays */
+.story-overlay-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  z-index: 1;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.story-overlay-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 320px;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* ─── Progress bars ──────────────────────────────────────────────────── */
+.story-progress-row {
+  position: absolute;
+  top: 14px;
+  left: 10px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+}
+
+.story-progress-track {
+  flex: 1;
+  height: 2px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.story-progress-fill {
+  height: 100%;
+  background: rgba(255,255,255,0.9);
+  border-radius: 2px;
+  transition: width 0.05s linear;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────── */
+.story-header {
+  position: absolute;
+  top: 26px;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 0;
+}
+
+.story-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.story-avatar-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 1.5px solid rgba(255,255,255,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.story-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.story-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.story-user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.story-username {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.story-time {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+}
+
+.story-subtitle {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+}
+
+.story-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.story-icon-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.story-icon-btn:active {
+  background: rgba(255,255,255,0.1);
+}
+
+/* ─── Tap zones ──────────────────────────────────────────────────────── */
+.story-tap-zone {
+  position: absolute;
+  top: 80px;
+  bottom: 220px;
+  z-index: 5;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.story-tap-left  { left: 0;   width: 40%; }
+.story-tap-right { right: 0;  width: 60%; }
+
+/* ─── Content card ───────────────────────────────────────────────────── */
+.story-card-area {
+  position: absolute;
+  bottom: 72px;
+  left: 12px;
+  right: 12px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.story-content-card {
+  background: rgba(15, 17, 20, 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 16px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: all;
+}
+
+/* Tags */
+.story-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.story-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+  background: rgba(26,28,30,0.65);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+/* Title */
+.story-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.25;
+  margin: 0;
+}
+
+/* Text */
+.story-text {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.72);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Stats */
+.story-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 2px;
+}
+
+.story-stat-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.65);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s;
+}
+
+.story-stat-btn:active,
+.story-stat-btn.active {
+  color: #fff;
+}
+
+.story-stat-btn.active svg {
+  color: #e05a6b;
+}
+
+/* ─── Reply bar ──────────────────────────────────────────────────────── */
+.story-reply-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px calc(env(safe-area-inset-bottom, 10px) + 10px);
+  background: transparent;
+}
+
+.story-reply-input-wrap {
+  flex: 1;
+}
+
+.story-reply-input {
+  width: 100%;
+  height: 42px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 22px;
+  padding: 0 14px;
+  font-size: 16px; /* prevents iOS zoom on focus */
+  color: #fff;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.story-reply-input::placeholder {
+  color: rgba(255,255,255,0.4);
+}
+
+.story-reply-input:focus {
+  border-color: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.15);
+}
+
+.story-reply-action {
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.story-reply-action:active {
+  background: rgba(255,255,255,0.1);
+}
+
+.story-reply-send:disabled {
+  opacity: 0.3;
+}
+
+/* Toast notification */
+.story-toast {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 100px;
+  padding: 8px 20px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: #fff;
+  z-index: 20;
+  white-space: nowrap;
+  animation: toastIn 0.2s ease;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

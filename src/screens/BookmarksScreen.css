@@ -1,0 +1,20 @@
+.bm-screen { display: flex; flex-direction: column; height: 100%; background: var(--bg); overflow: hidden; }
+.bm-topbar { padding: 52px 20px 16px; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.bm-title { font-family: var(--font-display); font-style: italic; font-size: 26px; font-weight: 400; color: var(--text-primary); }
+.bm-sub { font-family: var(--font-ui); font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+.bm-scroll { flex: 1; overflow-y: auto; padding: 0 20px; }
+.bm-scroll::-webkit-scrollbar { display: none; }
+
+.bm-empty { padding: 80px 0 40px; text-align: center; }
+.bm-empty-icon { font-size: 32px; opacity: 0.3; margin-bottom: 16px; }
+.bm-empty-text { font-family: var(--font-ui); font-size: 14px; color: var(--text-tertiary); line-height: 1.6; max-width: 240px; margin: 0 auto; }
+
+.bm-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: none; border-left: none; border-right: none; border-top: none; cursor: pointer;
+}
+.bm-row-left { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.bm-row-title { font-family: var(--font-display); font-style: italic; font-size: 18px; color: var(--text-primary); }
+.bm-row-meta { font-family: var(--font-ui); font-size: 12px; color: var(--text-tertiary); }
+.bm-bookmark-icon { font-size: 14px; color: var(--text-tertiary); opacity: 0.6; flex-shrink: 0; }

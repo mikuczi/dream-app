@@ -1,12 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import './MeScreen.css'
 import type { Dream, User } from '../types/dream'
-import {
-  getZodiacSymbol, getZodiacElement, getZodiacDates,
-  ZODIAC_DREAM_DESCRIPTIONS, getMoonPhase, getDreamInterpretation,
-} from '../utils/astro'
-import { DREAM_SYMBOLS } from '../data/symbols'
-import type { DreamSymbol } from '../data/symbols'
+import { getZodiacSymbol, getZodiacElement, ZODIAC_DREAM_DESCRIPTIONS } from '../utils/astro'
 
 interface MeScreenProps {
   user: User | null
@@ -15,13 +10,8 @@ interface MeScreenProps {
   onWhatsApp: () => void
   onSignIn: () => void
   onRecord: () => void
+  onSettings?: () => void
 }
-
-const MOOD_SYMBOLS: Record<string, string> = {
-  peaceful: '〜', joyful: '✦', anxious: '⊘', scary: '◈', strange: '∿',
-}
-
-const PLANET_LABELS = ['Moon', 'Mars', 'Saturn']
 
 function getInitials(name: string) {
   const p = name.trim().split(/\s+/)
@@ -31,8 +21,8 @@ function getInitials(name: string) {
 function calculateStreak(dreams: Dream[]) {
   if (!dreams.length) return 0
   const sorted = [...dreams].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  let streak = 0
   const today = new Date(); today.setHours(0, 0, 0, 0)
+  let streak = 0
   for (let i = 0; i <= 365; i++) {
     const d = new Date(today); d.setDate(today.getDate() - i)
     const has = sorted.some(dr => {
@@ -44,53 +34,9 @@ function calculateStreak(dreams: Dream[]) {
   return streak
 }
 
-function getLast7Days() {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i)); d.setHours(0, 0, 0, 0); return d
-  })
-}
+export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onRecord, onSettings }: MeScreenProps) {
 
-function Toggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
-  return (
-    <button className={`me-toggle ${active ? 'active' : ''}`} onClick={onToggle}
-      role="switch" aria-checked={active}>
-      <div className="me-toggle-thumb" />
-    </button>
-  )
-}
-
-export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onRecord }: MeScreenProps) {
-  const [notifs, setNotifs]       = useState(true)
-  const [dictCat, setDictCat]     = useState<DreamSymbol['category'] | 'all'>('all')
-  const [expandedSym, setExpSym]  = useState<string | null>(null)
-
-  const sorted = useMemo(() =>
-    [...dreams].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [dreams]
-  )
-
-  const tagCounts = useMemo(() => {
-    const c: Record<string, number> = {}
-    dreams.forEach(d => d.tags.forEach(t => { c[t] = (c[t] ?? 0) + 1 }))
-    return Object.entries(c).sort((a, b) => b[1] - a[1])
-  }, [dreams])
-
-  const lucidCount   = dreams.filter(d => d.lucid).length
-  const avgClarity   = dreams.length ? Math.round(dreams.reduce((s, d) => s + d.clarity, 0) / dreams.length * 10) / 10 : 0
-  const streak       = calculateStreak(dreams)
-  const mostRecent   = sorted[0] ?? null
-  const interpretations = mostRecent ? getDreamInterpretation(mostRecent) : []
-  const last7        = getLast7Days()
-  const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0)
-
-  const DICT_CATS: Array<{ id: DreamSymbol['category'] | 'all'; label: string }> = [
-    { id: 'all', label: 'All' }, { id: 'element', label: 'Elements' },
-    { id: 'action', label: 'Actions' }, { id: 'place', label: 'Places' },
-    { id: 'creature', label: 'Creatures' }, { id: 'object', label: 'Objects' },
-  ]
-  const filteredSymbols = dictCat === 'all' ? DREAM_SYMBOLS : DREAM_SYMBOLS.filter(s => s.category === dictCat)
-
-  // ── Guest state ───────────────────────────────────────────────
+  // Guest
   if (!user) {
     return (
       <div className="me-screen">
@@ -98,223 +44,143 @@ export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onReco
           <div className="me-guest">
             <span className="me-guest-icon">◯</span>
             <h2 className="me-guest-title">Your profile awaits.</h2>
-            <p className="me-guest-sub">
-              Sign in to save your dreams, unlock your natal chart, and discover your patterns.
-            </p>
+            <p className="me-guest-sub">Sign in to save your dreams, unlock your natal chart, and discover your patterns.</p>
             <button className="me-signin-btn" onClick={onSignIn}>Sign in</button>
           </div>
-          <div style={{ height: 24 }} />
-          {/* Show dictionary even for guests */}
-          <DictSection
-            cats={DICT_CATS} dictCat={dictCat} setDictCat={setDictCat}
-            filteredSymbols={filteredSymbols} expandedSym={expandedSym} setExpSym={setExpSym}
-          />
         </div>
       </div>
     )
   }
 
-  const zodiacSymbol  = getZodiacSymbol(user.zodiacSign)
-  const zodiacElement = getZodiacElement(user.zodiacSign)
-  const zodiacDates   = getZodiacDates(user.zodiacSign)
-  const signName      = user.zodiacSign.charAt(0).toUpperCase() + user.zodiacSign.slice(1)
-  const dreamDesc     = ZODIAC_DREAM_DESCRIPTIONS[user.zodiacSign]
+  const streak    = calculateStreak(dreams)
+  const symbolSet = useMemo(() => {
+    const counts: Record<string, number> = {}
+    dreams.forEach(d => d.tags.forEach(t => { counts[t] = (counts[t] ?? 0) + 1 }))
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])
+  }, [dreams])
+
+  const symbolCount  = symbolSet.length
+  const zodiacSymbol = getZodiacSymbol(user.zodiacSign)
+  const zodiacElem   = getZodiacElement(user.zodiacSign)
+  const signName     = user.zodiacSign.charAt(0).toUpperCase() + user.zodiacSign.slice(1)
+  const dreamDesc    = ZODIAC_DREAM_DESCRIPTIONS[user.zodiacSign]
+
+  const isNew = dreams.length < 3
+
+  const analysesCount = dreams.filter(d => (d.interpretations?.length ?? 0) > 0).length
+
+  const stats = [
+    { value: dreams.length,  label: 'dreams'   },
+    { value: symbolCount,    label: 'symbols'  },
+    { value: analysesCount,  label: 'analyses' },
+  ]
 
   return (
     <div className="me-screen">
       <div className="me-scroll">
 
-        {/* ── Identity ─────────────────────────────────────── */}
-        <div className="me-header">
-          <div className="me-avatar">{getInitials(user.name)}</div>
-          <h1 className="me-name">{user.name}</h1>
-          <p className="me-sign">{zodiacSymbol} {signName}</p>
-        </div>
-
-        {/* ── Stats ────────────────────────────────────────── */}
-        <div className="me-stats">
-          {[
-            { n: dreams.length, l: 'Dreams' },
-            { n: lucidCount,    l: 'Lucid' },
-            { n: streak,        l: 'Streak' },
-            { n: avgClarity || '—', l: 'Clarity' },
-          ].map((s, i, arr) => (
-            <div key={s.l} className="me-stat-wrap">
-              <div className="me-stat">
-                <span className="me-stat-num">{s.n}</span>
-                <span className="me-stat-label">{s.l}</span>
-              </div>
-              {i < arr.length - 1 && <div className="me-stat-sep" />}
+        {/* ── Profile header ─────────────────────────────── */}
+        <div className="me-profile-top">
+          <div className="me-avatar-name-row">
+            <div className="me-avatar">{getInitials(user.name)}</div>
+            <div className="me-identity">
+              <h1 className="me-name">{user.name}</h1>
+              <p className="me-bio-line">{zodiacSymbol} {signName} · {zodiacElem} dreamer</p>
             </div>
-          ))}
-        </div>
-
-        {/* ── Empty dream CTA ──────────────────────────────── */}
-        {dreams.length === 0 && (
-          <div className="me-empty-cta">
-            <p className="me-empty-text">No dreams recorded yet.</p>
-            <button className="me-empty-btn" onClick={onRecord}>Record your first dream</button>
           </div>
-        )}
 
-        {/* ── Natal chart ──────────────────────────────────── */}
-        <div className="me-section">
-          <p className="me-section-title">Natal Chart</p>
-          <div className="me-zodiac-card">
-            <div className="me-zodiac-row">
-              <span className="me-zodiac-sym">{zodiacSymbol}</span>
-              <div>
-                <p className="me-zodiac-name">{signName}</p>
-                <p className="me-zodiac-meta">{zodiacElement} · {zodiacDates}</p>
+          {/* Streak banner */}
+          {streak > 0 && (
+            <div className="me-streak-banner">
+              <div className="me-streak-flame">
+                <svg width="22" height="28" viewBox="0 0 22 28" fill="none">
+                  <path d="M11 2C11 2 16 7 16 12c0 1.5-.4 2.8-1 3.8C15.6 14.6 16 13 16 11c0 0 3 3 3 7a8 8 0 01-16 0c0-5 5-10 5-10s0 4 3 5c-1-2-1-4 0-6 1.5 2 2 4 1.5 5.5C13.5 11.5 14 9 11 2z" fill="rgba(255,160,30,0.9)" stroke="rgba(255,200,60,0.5)" strokeWidth="0.5"/>
+                </svg>
+                <div className="me-streak-ring" style={{ '--streak-pct': `${Math.min(streak / 30, 1) * 100}%` } as React.CSSProperties} />
+              </div>
+              <div className="me-streak-info">
+                <span className="me-streak-count">{streak}</span>
+                <span className="me-streak-label">day streak</span>
+              </div>
+              <div className="me-streak-dots">
+                {Array.from({ length: Math.min(streak, 7) }).map((_, i) => (
+                  <div key={i} className="me-streak-dot" style={{ animationDelay: `${i * 0.08}s` }} />
+                ))}
               </div>
             </div>
-            <p className="me-zodiac-desc">{dreamDesc}</p>
+          )}
+
+          <div className="me-stats-row">
+            {stats.map(s => (
+              <div key={s.label} className="me-stat-item">
+                <span className="me-stat-value">{s.value}</span>
+                <span className="me-stat-label">{s.label}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* ── This month stats ─────────────────────────────── */}
-        {dreams.length > 0 && (
-          <div className="me-section">
-            <p className="me-section-title">Moon this Week</p>
-            <div className="me-moon-row">
-              {last7.map((day, i) => {
-                const phase   = getMoonPhase(day)
-                const isToday = day.getTime() === todayMidnight.getTime()
-                return (
-                  <div key={i} className={`me-moon-day ${isToday ? 'today' : ''}`}>
-                    <span className="me-moon-sym">{phase.symbol}</span>
-                    <span className="me-moon-date">{day.getDate()}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        {/* ── Dream identity blurb ───────────────────────── */}
+        <div className="me-blurb-section">
+          <p className="me-blurb">{dreamDesc}</p>
+        </div>
 
-        {/* ── Recurring themes ─────────────────────────────── */}
-        {tagCounts.length > 0 && (
+        {/* ── Symbols section ────────────────────────────── */}
+        {symbolSet.length > 0 && (
           <div className="me-section">
-            <p className="me-section-title">Recurring Themes</p>
-            <div className="me-tags-row">
-              {tagCounts.map(([tag, count]) => (
-                <span key={tag} className="me-tag-chip">
-                  {tag} <span className="me-tag-count">×{count}</span>
+            <p className="me-section-label">Common symbols</p>
+            <div className="me-symbol-chips">
+              {symbolSet.slice(0, 10).map(([tag, count]) => (
+                <span key={tag} className="me-symbol-chip">
+                  {tag}
+                  {count > 1 && <span className="me-chip-count">{count}</span>}
                 </span>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── AI analysis ──────────────────────────────────── */}
-        {mostRecent && interpretations.length > 0 && (
-          <div className="me-section">
-            <p className="me-section-title">What the cosmos say</p>
-            <p className="me-analysis-from">From: {mostRecent.title}</p>
-            {interpretations.map((text, i) => (
-              <div key={i} className="me-interp-card">
-                <p className="me-interp-text">{text}</p>
-                <span className="me-interp-label">{PLANET_LABELS[i] ?? 'Venus'}</span>
-              </div>
-            ))}
+        {/* ── Activation CTAs (contextual) ───────────────── */}
+        {isNew && (
+          <div className="me-activation">
+            {dreams.length === 0 && (
+              <button className="me-cta-row" onClick={onRecord}>
+                <span className="me-cta-icon">▷</span>
+                <span className="me-cta-text">Record your first dream</span>
+                <span className="me-cta-chevron">›</span>
+              </button>
+            )}
+            <button className="me-cta-row" onClick={onWhatsApp}>
+              <span className="me-cta-icon">💬</span>
+              <span className="me-cta-text">Log dreams via WhatsApp</span>
+              <span className="me-cta-chevron">›</span>
+            </button>
+            <button className="me-cta-row me-cta-muted">
+              <span className="me-cta-icon">✦</span>
+              <span className="me-cta-text">Get your first deep analysis</span>
+              <span className="me-cta-chip">Soon</span>
+            </button>
           </div>
         )}
 
-        {/* ── Mood trend ───────────────────────────────────── */}
-        {sorted.length > 0 && (
-          <div className="me-section">
-            <p className="me-section-title">Mood Trend</p>
-            <div className="me-mood-row">
-              {sorted.slice(0, 5).map(d => (
-                <div key={d.id} className="me-mood-item">
-                  <span className="me-mood-sym">{MOOD_SYMBOLS[d.mood]}</span>
-                  <span className="me-mood-title">
-                    {d.title.length > 9 ? d.title.slice(0, 9) + '…' : d.title}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Dream dictionary ─────────────────────────────── */}
-        <DictSection
-          cats={DICT_CATS} dictCat={dictCat} setDictCat={setDictCat}
-          filteredSymbols={filteredSymbols} expandedSym={expandedSym} setExpSym={setExpSym}
-        />
-
-        {/* ── Preferences ──────────────────────────────────── */}
-        <div className="me-section">
-          <p className="me-section-title">Preferences</p>
-          <div className="me-rows">
-            <div className="me-row">
-              <span className="me-row-label">Notifications</span>
-              <Toggle active={notifs} onToggle={() => setNotifs(v => !v)} />
-            </div>
-            <div className="me-row-sep" />
-            <button className="me-row me-row-btn" onClick={onWhatsApp}>
-              <span className="me-row-label">WhatsApp Integration</span>
+        {/* ── Preferences ────────────────────────────────── */}
+        <div className="me-section me-section-last">
+          {onSettings && (
+            <button className="me-row-btn" onClick={onSettings}>
+              <span className="me-row-label">⚙ Settings</span>
               <span className="me-row-chevron">›</span>
             </button>
-            <div className="me-row-sep" />
-            <button className="me-row me-row-btn me-row-destructive" onClick={onSignOut}>
-              <span className="me-row-label">Sign out</span>
-            </button>
-          </div>
+          )}
+          <button className="me-row-btn" onClick={onWhatsApp}>
+            <span className="me-row-label">💬 Log via WhatsApp</span>
+            <span className="me-row-chevron">›</span>
+          </button>
+          <button className="me-row-btn me-row-destructive" onClick={onSignOut}>
+            <span className="me-row-label">Sign out</span>
+          </button>
         </div>
 
-        <div style={{ height: 40 }} />
-      </div>
-    </div>
-  )
-}
-
-// ── Extracted to avoid repetition ──────────────────────────
-function DictSection({ cats, dictCat, setDictCat, filteredSymbols, expandedSym, setExpSym }: {
-  cats: Array<{ id: DreamSymbol['category'] | 'all'; label: string }>
-  dictCat: DreamSymbol['category'] | 'all'
-  setDictCat: (c: DreamSymbol['category'] | 'all') => void
-  filteredSymbols: DreamSymbol[]
-  expandedSym: string | null
-  setExpSym: (id: string | null) => void
-}) {
-  return (
-    <div className="me-section">
-      <p className="me-section-title">Dream Dictionary</p>
-      <p className="me-dict-sub">Universal symbols and their meanings</p>
-      <div className="me-dict-filters">
-        {cats.map(c => (
-          <button key={c.id}
-            className={`me-dict-filter ${dictCat === c.id ? 'active' : ''}`}
-            onClick={() => setDictCat(c.id)}>
-            {c.label}
-          </button>
-        ))}
-      </div>
-      <div className="me-dict-list">
-        {filteredSymbols.map(sym => {
-          const open = expandedSym === sym.id
-          return (
-            <button key={sym.id}
-              className={`me-dict-card ${open ? 'open' : ''}`}
-              onClick={() => setExpSym(open ? null : sym.id)}>
-              <div className="me-dict-row">
-                <span className="me-dict-name">{sym.name}</span>
-                <span className="me-dict-cat">{sym.category}</span>
-                <span className="me-dict-toggle">{open ? '−' : '+'}</span>
-              </div>
-              <p className="me-dict-preview">{sym.meaning.split('.')[0]}.</p>
-              {open && (
-                <div className="me-dict-expanded">
-                  <p className="me-dict-full">{sym.meaning}</p>
-                  <div className="me-dict-jung">
-                    <span className="me-dict-jung-label">Jung</span>
-                    <p className="me-dict-jung-text">{sym.jungian}</p>
-                  </div>
-                </div>
-              )}
-            </button>
-          )
-        })}
+        <div style={{ height: 80 }} />
       </div>
     </div>
   )

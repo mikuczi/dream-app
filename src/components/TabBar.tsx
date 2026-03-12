@@ -1,19 +1,11 @@
 import './TabBar.css'
 
-export type Tab = 'record' | 'journal' | 'social' | 'me'
+export type Tab = 'journal' | 'social' | 'explore' | 'me'
 
 interface TabBarProps {
   active: Tab
   onChange: (tab: Tab) => void
-}
-
-function IconRecord() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="11" cy="11" r="3" fill="currentColor" />
-    </svg>
-  )
+  onRecord: () => void
 }
 
 function IconJournal() {
@@ -35,6 +27,18 @@ function IconSocial() {
   )
 }
 
+function IconExplore() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <circle cx="11" cy="11" r="7.5" stroke="currentColor" strokeWidth="1.4" />
+      <line x1="11" y1="3.5"  x2="11" y2="6.5"  stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="11" y1="15.5" x2="11" y2="18.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="3.5"  y1="11" x2="6.5"  y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="15.5" y1="11" x2="18.5" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function IconMe() {
   return (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
@@ -45,17 +49,44 @@ function IconMe() {
   )
 }
 
-const TABS: Array<{ id: Tab; label: string; Icon: React.FC }> = [
-  { id: 'record',  label: 'Record',  Icon: IconRecord },
+const LEFT_TABS: Array<{ id: Tab; label: string; Icon: React.FC }> = [
   { id: 'journal', label: 'Journal', Icon: IconJournal },
-  { id: 'social',  label: 'Social',  Icon: IconSocial },
-  { id: 'me',      label: 'Me',      Icon: IconMe },
+  { id: 'social',  label: 'Social',  Icon: IconSocial  },
+]
+const RIGHT_TABS: Array<{ id: Tab; label: string; Icon: React.FC }> = [
+  { id: 'explore', label: 'Explore', Icon: IconExplore },
+  { id: 'me',      label: 'Me',      Icon: IconMe      },
 ]
 
-export function TabBar({ active, onChange }: TabBarProps) {
+export function TabBar({ active, onChange, onRecord }: TabBarProps) {
   return (
     <nav className="tab-bar" role="tablist">
-      {TABS.map(({ id, label, Icon }) => (
+      {LEFT_TABS.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          className={`tab-btn ${active === id ? 'active' : ''}`}
+          onClick={() => onChange(id)}
+          role="tab"
+          aria-selected={active === id}
+          aria-label={label}
+        >
+          <Icon />
+          <span className="tab-label">{label}</span>
+        </button>
+      ))}
+
+      {/* Center record button */}
+      <div className="tab-record-wrap">
+        <button
+          className="tab-record-btn"
+          onClick={onRecord}
+          aria-label="Record a dream"
+        >
+          <div className="tab-record-dot" />
+        </button>
+      </div>
+
+      {RIGHT_TABS.map(({ id, label, Icon }) => (
         <button
           key={id}
           className={`tab-btn ${active === id ? 'active' : ''}`}

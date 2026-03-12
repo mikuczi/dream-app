@@ -10,39 +10,99 @@ interface LogScreenProps {
 
 const MOODS: { value: DreamMood; label: string; symbol: string }[] = [
   { value: 'peaceful', label: 'peaceful', symbol: '〜' },
-  { value: 'joyful', label: 'joyful', symbol: '✦' },
-  { value: 'anxious', label: 'anxious', symbol: '⊘' },
-  { value: 'scary', label: 'scary', symbol: '◈' },
-  { value: 'strange', label: 'strange', symbol: '∿' },
+  { value: 'joyful',   label: 'joyful',   symbol: '✦' },
+  { value: 'anxious',  label: 'anxious',  symbol: '⊘' },
+  { value: 'scary',    label: 'scary',    symbol: '◈' },
+  { value: 'strange',  label: 'strange',  symbol: '∿' },
 ]
 
-const ALL_TAGS = [
-  'people',
-  'flying',
-  'falling',
-  'water',
-  'work',
-  'nature',
-  'symbols',
-  'chase',
-  'light',
-  'darkness',
+// All available symbols/patterns to suggest
+const ALL_SYMBOLS = [
+  'Water', 'House', 'Flying', 'Falling', 'Being chased', 'Animals',
+  'Family', 'Childhood', 'Mirror', 'Forest', 'Stars', 'Darkness',
+  'Light', 'Time', 'Journey', 'Transformation', 'People', 'Death',
+  'Fire', 'Ocean', 'School', 'Recurring',
 ]
 
-function generateTitle(transcript: string): string {
-  const words = transcript.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return 'Untitled Dream'
-  if (words.length <= 6) return words.join(' ')
-  return words.slice(0, 6).join(' ') + '…'
+const SYMBOL_KEYWORDS: Record<string, string[]> = {
+  'Water':         ['water', 'ocean', 'sea', 'river', 'lake', 'rain', 'flood', 'swim', 'wave', 'shore', 'pool', 'stream'],
+  'House':         ['house', 'home', 'room', 'door', 'window', 'hallway', 'corridor', 'building', 'apartment', 'upstairs'],
+  'Flying':        ['fly', 'flying', 'float', 'soar', 'hover', 'wings', 'air', 'levitat'],
+  'Falling':       ['fall', 'fell', 'falling', 'drop', 'plummet', 'tumble', 'plunge'],
+  'Being chased':  ['chase', 'chased', 'chasing', 'running', 'escape', 'flee', 'pursue', 'hunting', 'following'],
+  'Animals':       ['dog', 'cat', 'bird', 'snake', 'wolf', 'horse', 'animal', 'creature', 'bear', 'lion', 'deer', 'fish'],
+  'Family':        ['family', 'mother', 'father', 'sister', 'brother', 'parent', 'mom', 'dad', 'grandmother', 'grandfather'],
+  'Childhood':     ['child', 'childhood', 'young', 'little', 'school', 'kid', 'baby', 'past', 'memory', 'grew up'],
+  'Mirror':        ['mirror', 'reflection', 'reflect', 'glass', 'duplicate'],
+  'Forest':        ['forest', 'tree', 'wood', 'woods', 'garden', 'nature', 'jungle', 'path through'],
+  'Stars':         ['star', 'moon', 'sky', 'night sky', 'space', 'universe', 'cosmos', 'celestial', 'planet'],
+  'Darkness':      ['dark', 'darkness', 'shadow', 'black', 'night', 'hidden'],
+  'Light':         ['light', 'bright', 'glow', 'shine', 'luminous', 'radiant', 'golden'],
+  'Time':          ['time', 'clock', 'watch', 'late', 'early', 'future', 'past', 'suddenly', 'years ago'],
+  'Journey':       ['travel', 'journey', 'road', 'path', 'walk', 'drive', 'train', 'car', 'bus', 'trip'],
+  'Transformation':['change', 'transform', 'morph', 'become', 'turn into', 'shift'],
+  'People':        ['person', 'people', 'stranger', 'someone', 'friend', 'crowd', 'woman', 'man'],
+  'Death':         ['death', 'dead', 'dying', 'die', 'funeral', 'grave', 'coffin'],
+  'Fire':          ['fire', 'flame', 'burn', 'burning', 'smoke', 'heat', 'torch'],
+  'Ocean':         ['ocean', 'sea', 'wave', 'tide', 'deep water', 'underwater', 'abyss'],
+  'School':        ['school', 'exam', 'test', 'classroom', 'teacher', 'study', 'university', 'class'],
+  'Recurring':     [],
 }
 
-function Toggle({
-  active,
-  onToggle,
-}: {
-  active: boolean
-  onToggle: () => void
-}) {
+function detectSymbols(transcript: string): string[] {
+  const lower = transcript.toLowerCase()
+  const found: string[] = []
+  for (const [symbol, keywords] of Object.entries(SYMBOL_KEYWORDS)) {
+    if (symbol === 'Recurring') continue
+    if (keywords.some(kw => lower.includes(kw))) {
+      found.push(symbol)
+    }
+  }
+  // Return top 5 most relevant
+  return found.slice(0, 6)
+}
+
+function generateTitle(transcript: string): string {
+  if (!transcript.trim()) return 'Untitled Dream'
+  const t = transcript.toLowerCase()
+
+  if (t.match(/\bfly(ing)?\b|\bfloat(ing)?\b|\bsoar(ing)?\b/))       return 'Rising Above'
+  if (t.match(/\bfall(ing)?\b|\bfell\b/))                             return 'The Long Fall'
+  if (t.match(/\bocean\b|\bwave\b/) && t.match(/\bstand\b|\bwalk\b/)) return 'At the Edge of the Ocean'
+  if (t.match(/\bocean\b|\bsea\b|\bunderwater\b/))                    return 'Beneath the Surface'
+  if (t.match(/\bchase\b|\bchased\b|\brunning.*away\b/))              return 'Running Through the Dark'
+  if (t.match(/\bhouse\b|\bhome\b/) && t.match(/\bchildre?n\b|\bchildhood\b|\bold\b/)) return 'The House I Once Knew'
+  if (t.match(/\bhouse\b|\bhome\b|\bhallway\b|\bcorridor\b/))         return 'The House With No Doors'
+  if (t.match(/\bschool\b|\bexam\b|\btest\b/))                        return 'The Exam I Never Took'
+  if (t.match(/\bforest\b|\btrees?\b|\bwoods?\b/))                    return 'Into the Forest'
+  if (t.match(/\bmirror\b|\breflect/))                                 return 'The Mirror'
+  if (t.match(/\bdead\b|\bdying\b|\bdeath\b/))                        return 'At the Edge'
+  if (t.match(/\bchildre?n\b|\bchildhood\b|\byoung\b.*\bself\b/))     return 'When I Was Small'
+  if (t.match(/\btrain\b|\bstation\b/))                               return 'The Train to Nowhere'
+  if (t.match(/\bfire\b|\bflame\b/))                                  return 'Everything on Fire'
+  if (t.match(/\bstars?\b|\bsky\b|\bspace\b/))                        return 'Among the Stars'
+  if (t.match(/\bstranger\b|\bunknown\b/))                            return 'Someone I Didn\'t Know'
+  if (t.match(/\bstuck\b|\bcouldn.t move\b|\bparalyz/))               return 'Frozen in Place'
+  if (t.match(/\blost\b|\bcouldn.t find\b/))                          return 'Something Lost'
+  if (t.match(/\bdeep\b.*\bwater\b|\bsink\b|\bdrown/))               return 'Sinking Down'
+
+  // Fall back: take first 4–5 meaningful words
+  const words = transcript.trim().split(/\s+/).filter(w => w.length > 3)
+  if (words.length >= 2) {
+    return words.slice(0, 4).map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+  }
+  return transcript.trim().slice(0, 40)
+}
+
+function generateSummary(transcript: string): string {
+  if (!transcript.trim()) return ''
+  const sentences = transcript.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 10)
+  if (sentences.length >= 2) return sentences.slice(0, 2).join(' ')
+  if (transcript.length <= 160) return transcript.trim()
+  return transcript.slice(0, 160).trimEnd() + '…'
+}
+
+function Toggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
   return (
     <button
       className={`toggle-track ${active ? 'active' : ''}`}
@@ -55,99 +115,130 @@ function Toggle({
   )
 }
 
-function DotRating({
-  value,
-  max = 5,
-  onChange,
-}: {
-  value: number
-  max?: number
-  onChange: (v: number) => void
-}) {
-  return (
-    <div className="dot-row">
-      {Array.from({ length: max }, (_, i) => (
-        <button
-          key={i}
-          className="dot-btn"
-          onClick={() => onChange(i + 1)}
-          aria-label={`Rate ${i + 1} of ${max}`}
-        >
-          <div className={`dot-icon ${i < value ? 'filled' : ''}`} />
-        </button>
-      ))}
-    </div>
-  )
+function todayISO() {
+  const d = new Date()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mm}-${dd}`
 }
 
 export function LogScreen({ transcript, onSave, onBack }: LogScreenProps) {
-  const [title, setTitle] = useState(() => generateTitle(transcript))
-  const [mood, setMood] = useState<DreamMood>('peaceful')
-  const [lucid, setLucid] = useState(false)
-  const [clarity, setClarity] = useState(3)
+  const [title,    setTitle]    = useState(() => generateTitle(transcript))
+  const [dreamDate, setDreamDate] = useState(todayISO())
+  const [mood,     setMood]     = useState<DreamMood>('peaceful')
+  const [symbols,  setSymbols]  = useState<string[]>(() => detectSymbols(transcript))
+  const [newTag,   setNewTag]   = useState('')
+  const [showMore, setShowMore] = useState(false)
+  const [lucid,    setLucid]    = useState(false)
   const [recurring, setRecurring] = useState(false)
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [sleepQuality, setSleepQuality] = useState(3)
 
-  function toggleTag(tag: string) {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    )
+  const summary = generateSummary(transcript)
+
+  function toggleSymbol(s: string) {
+    setSymbols(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
+  }
+
+  function addCustomTag() {
+    const t = newTag.trim()
+    if (t && !symbols.includes(t)) setSymbols(prev => [...prev, t])
+    setNewTag('')
   }
 
   function handleSave() {
     const dream: Dream = {
       id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(dreamDate + 'T12:00:00').toISOString(),
       title: title.trim() || 'Untitled Dream',
       transcript,
       mood,
       lucid,
-      clarity,
+      clarity: 3,
       recurring,
-      tags: selectedTags,
-      sleepQuality,
+      tags: symbols,
+      sleepQuality: 3,
     }
     onSave(dream)
   }
 
-  const previewText =
-    transcript.length > 100 ? transcript.slice(0, 100).trimEnd() + '…' : transcript
+  const unusedSymbols = ALL_SYMBOLS.filter(s => !symbols.includes(s))
 
   return (
     <div className="log-screen screen">
       {/* Header */}
       <div className="log-header">
-        <button className="log-back-btn" onClick={onBack} aria-label="Go back">
-          ← back
-        </button>
-        <span className="log-title">Log Dream</span>
+        <button className="log-back-btn" onClick={onBack} aria-label="Go back">← back</button>
       </div>
 
-      {/* Scrollable form */}
       <div className="log-scroll">
-        {/* Transcript preview */}
-        <div className="log-section">
-          <div className="log-transcript-card">
-            <p className="log-transcript-preview">{previewText || 'No transcript recorded.'}</p>
-          </div>
-        </div>
 
-        {/* Title */}
-        <div className="log-section" style={{ marginTop: 20 }}>
-          <div className="log-label">Dream title</div>
+        {/* Generated title — large, editable */}
+        <div className="log-title-section">
           <input
-            className="log-title-input"
+            className="log-title-input-hero"
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={e => setTitle(e.target.value)}
             placeholder="Name this dream…"
             maxLength={80}
           />
+          {summary && <p className="log-summary">{summary}</p>}
+          {/* Date picker */}
+          <div className="log-date-row">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="3" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+              <line x1="5" y1="1" x2="5" y2="5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              <line x1="11" y1="1" x2="11" y2="5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              <line x1="1" y1="7" x2="15" y2="7" stroke="currentColor" strokeWidth="1.1"/>
+            </svg>
+            <input
+              className="log-date-input"
+              type="date"
+              value={dreamDate}
+              max={todayISO()}
+              onChange={e => setDreamDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Symbols & patterns */}
+        <div className="log-section">
+          <div className="log-label">Symbols & patterns</div>
+          <div className="log-chips-row">
+            {symbols.map(s => (
+              <button key={s} className="log-chip log-chip-selected" onClick={() => toggleSymbol(s)}>
+                {s} ×
+              </button>
+            ))}
+          </div>
+
+          {/* Add more symbols */}
+          <div className="log-add-symbols">
+            {unusedSymbols.slice(0, 8).map(s => (
+              <button key={s} className="log-chip" onClick={() => toggleSymbol(s)}>
+                + {s}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom tag input */}
+          <div className="log-custom-tag-row">
+            <input
+              className="log-custom-tag-input"
+              type="text"
+              value={newTag}
+              onChange={e => setNewTag(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addCustomTag()}
+              placeholder="Add your own…"
+              maxLength={30}
+            />
+            {newTag.trim() && (
+              <button className="log-custom-tag-add" onClick={addCustomTag}>Add</button>
+            )}
+          </div>
         </div>
 
         {/* Mood */}
-        <div className="log-section" style={{ marginTop: 20 }}>
+        <div className="log-section">
           <div className="log-label">How did it feel?</div>
           <div className="mood-pills">
             {MOODS.map(({ value, label, symbol }) => (
@@ -163,50 +254,32 @@ export function LogScreen({ transcript, onSave, onBack }: LogScreenProps) {
           </div>
         </div>
 
-        {/* Lucid */}
-        <div className="log-section" style={{ marginTop: 20 }}>
-          <div className="log-label">Were you lucid?</div>
-          <div className="log-toggle-row">
-            <span className="log-toggle-value">{lucid ? 'Yes' : 'No'}</span>
-            <Toggle active={lucid} onToggle={() => setLucid((v) => !v)} />
+        {/* Transcript preview */}
+        {transcript && (
+          <div className="log-section">
+            <div className="log-transcript-card">
+              <p className="log-transcript-preview">{transcript}</p>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Clarity */}
-        <div className="log-section" style={{ marginTop: 20 }}>
-          <div className="log-label">Dream clarity</div>
-          <DotRating value={clarity} onChange={setClarity} />
-        </div>
-
-        {/* Recurring */}
-        <div className="log-section" style={{ marginTop: 20 }}>
-          <div className="log-label">Seen before?</div>
-          <div className="log-toggle-row">
-            <span className="log-toggle-value">{recurring ? 'Yes' : 'No'}</span>
-            <Toggle active={recurring} onToggle={() => setRecurring((v) => !v)} />
-          </div>
-        </div>
-
-        {/* Tags */}
-        <div className="log-section" style={{ marginTop: 20 }}>
-          <div className="log-label">Elements</div>
-          <div className="tags-grid">
-            {ALL_TAGS.map((tag) => (
-              <button
-                key={tag}
-                className={`tag-chip ${selectedTags.includes(tag) ? 'selected' : ''}`}
-                onClick={() => toggleTag(tag)}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Sleep quality */}
-        <div className="log-section" style={{ marginTop: 20 }}>
-          <div className="log-label">Sleep quality</div>
-          <DotRating value={sleepQuality} onChange={setSleepQuality} />
+        {/* More details toggle */}
+        <div className="log-section">
+          <button className="log-more-toggle" onClick={() => setShowMore(v => !v)}>
+            {showMore ? 'Less details ↑' : 'More details ↓'}
+          </button>
+          {showMore && (
+            <div className="log-more-content">
+              <div className="log-more-row">
+                <span className="log-more-label">Lucid dream</span>
+                <Toggle active={lucid} onToggle={() => setLucid(v => !v)} />
+              </div>
+              <div className="log-more-row">
+                <span className="log-more-label">Recurring</span>
+                <Toggle active={recurring} onToggle={() => setRecurring(v => !v)} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Save */}
@@ -214,7 +287,11 @@ export function LogScreen({ transcript, onSave, onBack }: LogScreenProps) {
           <button className="log-save-btn" onClick={handleSave}>
             Add to Journal
           </button>
+          <button className="log-deep-analysis-btn" onClick={handleSave}>
+            Analyze this dream deeper →
+          </button>
         </div>
+
       </div>
     </div>
   )

@@ -5,6 +5,8 @@ export interface Dream {
   createdAt: string       // ISO date string
   title: string
   transcript: string
+  notes?: string          // additional user notes
+  artwork?: string        // URL or gradient CSS string
   mood: DreamMood
   lucid: boolean
   clarity: number         // 1–5
@@ -12,7 +14,16 @@ export interface Dream {
   tags: string[]
   sleepQuality: number    // 1–5
   isPrivate?: boolean     // default false = public
+  interpretations?: DreamInterpretation[]
   comments?: Comment[]
+  bookmarked?: boolean
+}
+
+export interface DreamInterpretation {
+  id: string
+  framework: 'jungian' | 'freudian' | 'symbolic' | 'narrative' | 'psychological'
+  text: string
+  createdAt: string
 }
 
 export interface Comment {
@@ -46,6 +57,7 @@ export interface User {
   dob: string           // ISO date string "1990-05-21"
   zodiacSign: ZodiacSign
   createdAt: string
+  photoURL?: string
 }
 
 export interface MoonPhaseInfo {

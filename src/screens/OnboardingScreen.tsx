@@ -1,13 +1,9 @@
 import { useState, useRef } from 'react'
 import './OnboardingScreen.css'
-
-interface WhatsAppData {
-  platform: 'whatsapp' | 'telegram'
-  phone: string
-}
+import { PhoneInput } from '../components/PhoneInput'
 
 interface OnboardingScreenProps {
-  onDone: (whatsappData?: WhatsAppData) => void
+  onDone: (whatsappData?: { platform: 'whatsapp' | 'telegram'; phone: string; dialCode: string }) => void
 }
 
 const TOTAL_SLIDES = 5
@@ -15,7 +11,9 @@ const TOTAL_SLIDES = 5
 export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [selectedPlatform, setSelectedPlatform] = useState<'whatsapp' | 'telegram' | null>(null)
-  const [phone, setPhone] = useState('')
+  const [phone, setPhone]       = useState('')
+  const [dialCode, setDialCode] = useState('+1')
+  const [confirmed, setConfirmed] = useState(false)
   const startXRef = useRef<number | null>(null)
 
   function next() {
@@ -24,15 +22,23 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   }
 
   function handleFinish() {
-    const data: WhatsAppData | undefined =
-      selectedPlatform ? { platform: selectedPlatform, phone } : undefined
+    const data = selectedPlatform && phone
+      ? { platform: selectedPlatform, phone: dialCode + phone, dialCode }
+      : undefined
     onDone(data)
+  }
+
+  function handleConnect() {
+    if (selectedPlatform && phone) {
+      setConfirmed(true)
+    } else {
+      next()
+    }
   }
 
   function handleTouchStart(e: React.TouchEvent) {
     startXRef.current = e.touches[0].clientX
   }
-
   function handleTouchEnd(e: React.TouchEvent) {
     if (startXRef.current === null) return
     const delta = startXRef.current - e.changedTouches[0].clientX
@@ -52,7 +58,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
       {/* Top nav */}
       <div className="onboarding-topnav">
         {!isLast
-          ? <button className="onboarding-skip" onClick={() => handleFinish()}>Skip</button>
+          ? <button className="onboarding-skip" onClick={handleFinish}>Skip</button>
           : <div />
         }
         {!isLast && (
@@ -60,7 +66,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
         )}
       </div>
 
-      {/* Slides track — each slide is 20% of the 500%-wide container = 100vw */}
+      {/* Slides */}
       <div
         className="onboarding-slides"
         style={{ transform: `translateX(-${currentSlide * 20}%)` }}
@@ -88,9 +94,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               <div className="ob-mic-ring ob-mic-ring-3" />
               <div className="ob-mic-ring ob-mic-ring-2" />
               <div className="ob-mic-ring ob-mic-ring-1" />
-              <div className="ob-mic-center">
-                <div className="ob-mic-dot" />
-              </div>
+              <div className="ob-mic-center"><div className="ob-mic-dot" /></div>
             </div>
           </div>
           <div className="ob-text-block">
@@ -115,13 +119,13 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           </div>
         </div>
 
-        {/* Slide 3 — Connect (NEW) */}
+        {/* Slide 3 — Connect WhatsApp */}
         <div className="onboarding-slide">
           <div className="ob-visual ob-visual-connect">
             <div className="ob-connect-pills">
               <button
                 className={`ob-platform-pill ob-platform-whatsapp ${selectedPlatform === 'whatsapp' ? 'selected' : ''}`}
-                onClick={() => setSelectedPlatform('whatsapp')}
+                onClick={() => { setSelectedPlatform('whatsapp'); setConfirmed(false) }}
               >
                 <span className="ob-platform-icon">💬</span>
                 <span>WhatsApp</span>
@@ -129,29 +133,45 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               </button>
               <button
                 className={`ob-platform-pill ob-platform-telegram ${selectedPlatform === 'telegram' ? 'selected' : ''}`}
-                onClick={() => setSelectedPlatform('telegram')}
+                onClick={() => { setSelectedPlatform('telegram'); setConfirmed(false) }}
               >
                 <span className="ob-platform-icon">✈</span>
                 <span>Telegram</span>
                 {selectedPlatform === 'telegram' && <span className="ob-platform-check">✓</span>}
               </button>
             </div>
-            {selectedPlatform && (
-              <div className="ob-phone-input-row">
-                <span className="ob-phone-prefix">+1</span>
-                <input
-                  className="ob-phone-input"
-                  type="tel"
-                  placeholder="Phone number"
+
+            {selectedPlatform && !confirmed && (
+              <div className="ob-phone-wrap">
+                <PhoneInput
                   value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  inputMode="tel"
+                  dialCode={dialCode}
+                  onChange={(p, d, _c) => { setPhone(p); setDialCode(d) }}
                 />
+                <button
+                  className="ob-connect-btn"
+                  onClick={handleConnect}
+                  disabled={!phone.trim()}
+                >
+                  Add the WhatsApp number now →
+                </button>
               </div>
             )}
-            <button className="ob-skip-link" onClick={next}>
-              Skip for now
-            </button>
+
+            {confirmed && (
+              <div className="ob-confirmed-card">
+                <span className="ob-confirmed-icon">✦</span>
+                <p className="ob-confirmed-text">
+                  We'll send you a WhatsApp message shortly.<br />
+                  Tap the link to confirm your number.
+                </p>
+                <button className="ob-continue-btn" onClick={next}>Continue →</button>
+              </div>
+            )}
+
+            {!selectedPlatform && (
+              <button className="ob-skip-link" onClick={next}>Skip for now</button>
+            )}
           </div>
           <div className="ob-text-block">
             <h2 className="ob-heading">Never miss a dream.</h2>
@@ -159,7 +179,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           </div>
         </div>
 
-        {/* Slide 4 — WhatsApp (moved from slide 3) */}
+        {/* Slide 4 — Log from anywhere */}
         <div className="onboarding-slide">
           <div className="ob-visual ob-visual-4">
             <div className="ob-chat-mock">
@@ -185,7 +205,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
             <p className="ob-body">Send a WhatsApp voice note — your dream is logged automatically.</p>
           </div>
           <div className="ob-cta-area">
-            <button className="ob-get-started-btn" onClick={() => handleFinish()}>
+            <button className="ob-get-started-btn" onClick={handleFinish}>
               Start journaling →
             </button>
           </div>

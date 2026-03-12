@@ -90,6 +90,59 @@
   color-scheme: dark;
 }
 
+/* ── Google SSO ─────────────────────────────────────────── */
+.login-google-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.login-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 54px;
+  border-radius: 100px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.login-google-btn:active {
+  opacity: 0.8;
+  background: var(--bg-card-hover, var(--bg-card));
+}
+
+.login-google-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-tertiary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 /* ── Button ─────────────────────────────────────────────── */
 .login-btn {
   width: 100%;

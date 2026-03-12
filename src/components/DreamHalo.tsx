@@ -1,171 +1,135 @@
 import { useRef, useEffect } from 'react'
 
-interface DreamHaloProps {
-  recording: boolean
-  size?: number
-}
+interface DreamHaloProps { recording: boolean }
 
-interface RingConfig {
-  baseRadius: number
-  // Three sine wave components per ring for organic complexity
-  a1: number; n1: number; p1: number; s1: number
-  a2: number; n2: number; p2: number; s2: number
-  a3: number; n3: number; p3: number; s3: number
-  alpha: number
-  lineWidth: number
-  rotSpeed: number // individual slow rotation
-}
-
-const RINGS: RingConfig[] = [
-  {
-    baseRadius: 52,
-    a1: 14, n1: 5,  p1: 0.0,  s1:  0.55,
-    a2:  9, n2: 3,  p2: 1.1,  s2: -0.38,
-    a3:  5, n3: 7,  p3: 2.4,  s3:  0.21,
-    alpha: 0.40, lineWidth: 1.4, rotSpeed:  0.04,
-  },
-  {
-    baseRadius: 78,
-    a1: 18, n1: 7,  p1: 0.7,  s1:  0.42,
-    a2: 13, n2: 4,  p2: 2.3,  s2:  0.29,
-    a3:  8, n3: 9,  p3: 0.9,  s3: -0.18,
-    alpha: 0.26, lineWidth: 1.1, rotSpeed: -0.03,
-  },
-  {
-    baseRadius: 106,
-    a1: 24, n1: 6,  p1: 1.4,  s1: -0.34,
-    a2: 17, n2: 5,  p2: 0.5,  s2:  0.45,
-    a3: 10, n3: 8,  p3: 3.1,  s3:  0.22,
-    alpha: 0.17, lineWidth: 0.9, rotSpeed:  0.025,
-  },
-  {
-    baseRadius: 136,
-    a1: 32, n1: 9,  p1: 0.3,  s1:  0.26,
-    a2: 22, n2: 6,  p2: 1.8,  s2: -0.21,
-    a3: 14, n3: 4,  p3: 0.6,  s3:  0.35,
-    alpha: 0.11, lineWidth: 0.75, rotSpeed: -0.02,
-  },
-  {
-    baseRadius: 168,
-    a1: 42, n1: 8,  p1: 2.1,  s1: -0.20,
-    a2: 28, n2: 7,  p2: 0.9,  s2:  0.17,
-    a3: 18, n3: 5,  p3: 1.5,  s3: -0.28,
-    alpha: 0.06, lineWidth: 0.55, rotSpeed:  0.015,
-  },
-]
-
-const POINTS = 256
-
-export function DreamHalo({ recording, size = 360 }: DreamHaloProps) {
-  const canvasRef     = useRef<HTMLCanvasElement>(null)
-  const rafRef        = useRef<number>(0)
-  const energyRef     = useRef(0)
-  const recordingRef  = useRef(recording)
-  const startRef      = useRef(performance.now())
+// Teal orb — reference: glowing teal sphere with concentric dark rings + dot grid
+export function DreamHalo({ recording }: DreamHaloProps) {
+  const canvasRef    = useRef<HTMLCanvasElement>(null)
+  const rafRef       = useRef<number>(0)
+  const energyRef    = useRef(0)
+  const recordingRef = useRef(recording)
+  const startRef     = useRef(performance.now())
+  const sizeRef      = useRef({ w: 1, h: 1 })
 
   useEffect(() => { recordingRef.current = recording }, [recording])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    canvas.width  = size * dpr
-    canvas.height = size * dpr
-
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     const c = ctx
-    c.scale(dpr, dpr)
 
-    const cx = size / 2
-    const cy = size / 2
-
-    function drawRing(ring: RingConfig, t: number, energy: number) {
-      const ampScale   = 1 + energy * 2.4
-      const speedScale = 1 + energy * 2.8
-      const alphaBoost = 1 + energy * 1.1
-      const rot        = ring.rotSpeed * t
-
-      c.beginPath()
-
-      for (let j = 0; j <= POINTS; j++) {
-        const rawTheta = (j / POINTS) * Math.PI * 2
-        const theta    = rawTheta + rot
-
-        const r =
-          ring.baseRadius +
-          ring.a1 * ampScale * Math.sin(ring.n1 * rawTheta + ring.p1 + t * ring.s1 * speedScale) +
-          ring.a2 * ampScale * Math.sin(ring.n2 * rawTheta + ring.p2 + t * ring.s2 * speedScale) +
-          ring.a3 * ampScale * Math.sin(ring.n3 * rawTheta + ring.p3 + t * ring.s3 * speedScale)
-
-        const x = cx + r * Math.cos(theta)
-        const y = cy + r * Math.sin(theta)
-
-        j === 0 ? c.moveTo(x, y) : c.lineTo(x, y)
-      }
-
-      c.closePath()
-      c.strokeStyle = `rgba(255, 255, 255, ${Math.min(ring.alpha * alphaBoost, 0.65)})`
-      c.lineWidth   = ring.lineWidth * (1 + energy * 0.5)
-      c.stroke()
+    function resize() {
+      const w = canvas!.offsetWidth  || 390
+      const h = canvas!.offsetHeight || 844
+      sizeRef.current = { w, h }
+      canvas!.width  = w * dpr
+      canvas!.height = h * dpr
     }
+    resize()
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
 
     function drawFrame() {
-      c.clearRect(0, 0, size, size)
+      const { w, h } = sizeRef.current
+      c.setTransform(dpr, 0, 0, dpr, 0, 0)
+      c.clearRect(0, 0, w, h)
 
-      // Lerp energy
-      const target = recordingRef.current ? 1.0 : 0.0
-      energyRef.current += (target - energyRef.current) * 0.025
-      const energy = energyRef.current
+      const target = recordingRef.current ? 1.0 : 0.2
+      energyRef.current += (target - energyRef.current) * 0.02
+      const energy  = energyRef.current
+      const t       = (performance.now() - startRef.current) / 1000
+      const breathe = 0.5 + 0.5 * Math.sin(t * 0.55)
+      const ripple  = 0.5 + 0.5 * Math.sin(t * 1.1)
 
-      const t = (performance.now() - startRef.current) / 1000
+      const cx    = w / 2
+      const cy    = h / 2
+      const scale = Math.min(w, h) / 390
 
-      // Slow global breathing pulse
-      const breathe = 0.5 + 0.5 * Math.sin(t * 0.4)
+      // ── Ambient dark background glow (very subtle)
+      const bgGrad = c.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.6)
+      bgGrad.addColorStop(0,   `rgba(0,40,50,${0.18 * energy})`)
+      bgGrad.addColorStop(0.5, `rgba(0,20,28,${0.10 * energy})`)
+      bgGrad.addColorStop(1,   'rgba(0,0,0,0)')
+      c.fillStyle = bgGrad
+      c.fillRect(0, 0, w, h)
 
-      // Outer nebula glow
-      const nebulaAlpha = (0.025 + energy * 0.055) * (0.8 + 0.2 * breathe)
-      const nebula = c.createRadialGradient(cx, cy, 0, cx, cy, size * 0.52)
-      nebula.addColorStop(0,   `rgba(255,255,255,${nebulaAlpha})`)
-      nebula.addColorStop(0.45, `rgba(255,255,255,${nebulaAlpha * 0.4})`)
-      nebula.addColorStop(1,   'rgba(255,255,255,0)')
-      c.fillStyle = nebula
-      c.fillRect(0, 0, size, size)
+      // ── Outer teal glow corona
+      const outerRadius = (140 + 20 * breathe) * scale
+      const outerGrad = c.createRadialGradient(cx, cy, 0, cx, cy, outerRadius)
+      outerGrad.addColorStop(0,    `rgba(0,200,212,${(0.10 + 0.08 * energy) * (0.75 + 0.25 * breathe)})`)
+      outerGrad.addColorStop(0.45, `rgba(0,180,195,${(0.06 + 0.05 * energy)})`)
+      outerGrad.addColorStop(0.75, `rgba(0,140,160,${0.025 * energy})`)
+      outerGrad.addColorStop(1,    'rgba(0,0,0,0)')
+      c.fillStyle = outerGrad
+      c.fillRect(0, 0, w, h)
 
-      // Inner tight glow (pulses with breath)
-      const innerAlpha = (0.06 + energy * 0.12) * (0.7 + 0.3 * breathe)
-      const inner = c.createRadialGradient(cx, cy, 0, cx, cy, 70)
-      inner.addColorStop(0, `rgba(255,255,255,${innerAlpha})`)
-      inner.addColorStop(1, 'rgba(255,255,255,0)')
-      c.fillStyle = inner
-      c.fillRect(0, 0, size, size)
+      // ── Main teal sphere glow
+      const sphereR = (72 + 8 * breathe) * scale
+      const sphereGrad = c.createRadialGradient(cx, cy, 0, cx, cy, sphereR)
+      sphereGrad.addColorStop(0,    `rgba(180,240,248,${(0.30 + 0.18 * energy) * (0.85 + 0.15 * breathe)})`)
+      sphereGrad.addColorStop(0.25, `rgba(0,210,225,${(0.22 + 0.14 * energy)})`)
+      sphereGrad.addColorStop(0.55, `rgba(0,160,180,${(0.12 + 0.08 * energy)})`)
+      sphereGrad.addColorStop(0.8,  `rgba(0,100,120,${0.05 * energy})`)
+      sphereGrad.addColorStop(1,    'rgba(0,0,0,0)')
+      c.fillStyle = sphereGrad
+      c.fillRect(0, 0, w, h)
 
-      // Draw rings outer → inner so innermost paints last (most visible)
-      for (let i = RINGS.length - 1; i >= 0; i--) {
-        drawRing(RINGS[i], t, energy)
+      // ── Concentric rings (5 rings, dark/teal strokes)
+      const ringRadii  = [88, 110, 134, 160, 188].map(r => r * scale)
+      const ringAlphas = [0.30, 0.22, 0.15, 0.10, 0.06]
+      for (let i = 0; i < ringRadii.length; i++) {
+        const wobble = Math.sin(t * 0.35 + i * 0.8) * 3 * scale * energy
+        const r = ringRadii[i] + wobble
+        c.beginPath()
+        c.arc(cx, cy, r, 0, Math.PI * 2)
+        c.strokeStyle = `rgba(0,200,212,${ringAlphas[i] * (0.6 + 0.4 * energy)})`
+        c.lineWidth = (1.6 - i * 0.2) * scale
+        c.stroke()
+      }
+
+      // ── Ripple ring (expands outward when recording)
+      if (energy > 0.15) {
+        const rippleR = (90 + ripple * 50) * scale
+        const rippleAlpha = (1 - ripple) * 0.25 * energy
+        c.beginPath()
+        c.arc(cx, cy, rippleR, 0, Math.PI * 2)
+        c.strokeStyle = `rgba(0,200,212,${rippleAlpha})`
+        c.lineWidth = 1.2 * scale
+        c.stroke()
+      }
+
+      // ── Dot grid in center (3×3)
+      const dotRows = 3
+      const dotCols = 3
+      const dotSpacing = 11 * scale
+      const dotRadius  = 2.8 * scale
+      for (let row = 0; row < dotRows; row++) {
+        for (let col = 0; col < dotCols; col++) {
+          const dx = cx + (col - (dotCols - 1) / 2) * dotSpacing
+          const dy = cy + (row - (dotRows - 1) / 2) * dotSpacing
+          const dist = Math.sqrt((col - 1) ** 2 + (row - 1) ** 2)
+          const dotAlpha = (0.55 + 0.35 * energy) * (1 - dist * 0.15) * (0.8 + 0.2 * breathe)
+          c.beginPath()
+          c.arc(dx, dy, dotRadius * (1 - dist * 0.08), 0, Math.PI * 2)
+          c.fillStyle = `rgba(240,252,255,${Math.max(0.1, dotAlpha)})`
+          c.fill()
+        }
       }
 
       rafRef.current = requestAnimationFrame(drawFrame)
     }
 
     rafRef.current = requestAnimationFrame(drawFrame)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [size])
+    return () => { cancelAnimationFrame(rafRef.current); ro.disconnect() }
+  }, [])
 
   return (
     <canvas
       ref={canvasRef}
-      style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: size,
-        height: size,
-        zIndex: 0,
-        pointerEvents: 'none',
-      }}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
     />
   )
 }

@@ -61,10 +61,30 @@ function RowSep() {
 }
 
 export function SettingsScreen({ user, onBack, onClearDreams }: SettingsScreenProps) {
-  const [reminderOn, setReminderOn] = useState(true)
+  const [reminderOn, setReminderOn] = useState(() => localStorage.getItem('dj_notif_enabled') === '1')
+  const [reminderTime, setReminderTime] = useState(() => localStorage.getItem('dj_notif_time') ?? '09:30')
   const [cosmicOn, setCosmicOn] = useState(true)
   const [whatsappAlertsOn, setWhatsappAlertsOn] = useState(false)
   const [clearConfirm, setClearConfirm] = useState(false)
+
+  async function handleToggleReminder() {
+    const next = !reminderOn
+    setReminderOn(next)
+    if (next) {
+      if (Notification.permission === 'default') {
+        const perm = await Notification.requestPermission()
+        if (perm !== 'granted') { setReminderOn(false); return }
+      }
+      localStorage.setItem('dj_notif_enabled', '1')
+    } else {
+      localStorage.removeItem('dj_notif_enabled')
+    }
+  }
+
+  function handleTimeChange(t: string) {
+    setReminderTime(t)
+    localStorage.setItem('dj_notif_time', t)
+  }
 
   function handleExport() {
     alert('Export feature coming soon.')
@@ -124,9 +144,25 @@ export function SettingsScreen({ user, onBack, onClearDreams }: SettingsScreenPr
           <p className="settings-section-label">Notifications</p>
           <SettingsGroup>
             <SettingsRow
-              label="Dream reminder"
-              right={<Toggle active={reminderOn} onToggle={() => setReminderOn((v) => !v)} />}
+              label="Morning dream reminder"
+              right={<Toggle active={reminderOn} onToggle={handleToggleReminder} />}
             />
+            {reminderOn && (
+              <>
+                <RowSep />
+                <SettingsRow
+                  label="Reminder time"
+                  right={
+                    <input
+                      type="time"
+                      value={reminderTime}
+                      onChange={e => handleTimeChange(e.target.value)}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontFamily: 'var(--font-ui)', fontSize: 14, outline: 'none' }}
+                    />
+                  }
+                />
+              </>
+            )}
             <RowSep />
             <SettingsRow
               label="Daily cosmic reading"

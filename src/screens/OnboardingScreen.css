@@ -499,3 +499,62 @@
   width: 18px;
   border-radius: 3px;
 }
+
+/* ── Phone wrap & connect ───────────────────────────────── */
+.ob-phone-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.ob-connect-btn {
+  background: var(--text-primary);
+  color: var(--bg);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 100px;
+  padding: 13px 20px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  width: 100%;
+}
+.ob-connect-btn:disabled { opacity: 0.3; cursor: default; }
+.ob-connect-btn:not(:disabled):active { opacity: 0.8; }
+
+/* ── Confirmation card ──────────────────────────────────── */
+.ob-confirmed-card {
+  margin-top: 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.ob-confirmed-icon { font-size: 22px; color: var(--text-secondary); }
+.ob-confirmed-text {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.ob-continue-btn {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 100px;
+  padding: 9px 20px;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.15s;
+}
+.ob-continue-btn:active { background: rgba(255,255,255,0.06); }

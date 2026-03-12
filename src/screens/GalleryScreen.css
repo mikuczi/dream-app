@@ -1,0 +1,46 @@
+.gallery-screen {
+  display: flex; flex-direction: column; height: 100%; background: var(--bg); overflow: hidden;
+}
+
+.gallery-topbar {
+  padding: 52px 20px 16px; flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.gallery-title {
+  font-family: var(--font-display); font-style: italic; font-size: 26px;
+  font-weight: 400; color: var(--text-primary);
+}
+
+.gallery-empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px; text-align: center; gap: 12px;
+}
+
+.gallery-empty-text {
+  font-family: var(--font-display); font-style: italic; font-size: 20px; color: var(--text-secondary);
+}
+
+.gallery-empty-sub {
+  font-family: var(--font-ui); font-size: 13px; color: var(--text-tertiary); max-width: 240px; line-height: 1.6;
+}
+
+.gallery-grid {
+  flex: 1; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px;
+}
+.gallery-grid::-webkit-scrollbar { display: none; }
+
+.gallery-item {
+  aspect-ratio: 1; position: relative; cursor: pointer; overflow: hidden;
+}
+
+.gallery-item-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+  padding: 10px 8px 8px;
+}
+
+.gallery-item-title {
+  font-family: var(--font-ui); font-size: 10px; color: rgba(255,255,255,0.8);
+  text-overflow: ellipsis; overflow: hidden; white-space: nowrap; letter-spacing: 0.04em;
+}

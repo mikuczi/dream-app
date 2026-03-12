@@ -45,31 +45,146 @@
   pointer-events: none;
 }
 
-/* View toggle */
-.journal-view-toggle {
+/* Calendar toggle button */
+.journal-cal-btn {
   margin-left: auto;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  color: var(--text-tertiary);
+  width: 32px;
+  height: 32px;
   display: flex;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 100px;
-  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
   flex-shrink: 0;
 }
 
-.journal-toggle-btn {
+.journal-cal-btn.active {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.06);
+}
+
+/* ── 7-day strip ─────────────────────────────────────────── */
+.journal-strip-wrap {
+  padding: 4px 16px 10px;
+  flex-shrink: 0;
+}
+
+.journal-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.strip-day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 2px 7px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.strip-day-today {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+.strip-day-selected {
+  background: rgba(255,255,255,0.07);
+  border-color: var(--border-strong);
+}
+
+.strip-day-label {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--text-tertiary);
-  padding: 5px 10px;
-  transition: color 0.15s ease, background 0.15s ease;
+  text-transform: uppercase;
+}
+
+.strip-day-today .strip-day-label { color: var(--text-secondary); }
+.strip-day-selected .strip-day-label { color: var(--text-primary); }
+
+.strip-day-num {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.strip-day-today .strip-day-num { color: var(--text-primary); }
+.strip-day-selected .strip-day-num { color: var(--text-primary); }
+
+.strip-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.strip-dot.has-dreams {
+  background: var(--text-secondary);
+}
+
+.strip-day-selected .strip-dot.has-dreams {
+  background: var(--text-primary);
+}
+
+/* Clear day filter chip */
+.journal-clear-day {
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.journal-toggle-btn.active {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+/* Cal cell number label */
+.cal-cell-num {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+
+.cal-cell-has-dreams .cal-cell-num { color: var(--text-secondary); }
+.cal-cell-today .cal-cell-num       { color: var(--text-primary); }
+.cal-cell-selected .cal-cell-num    { color: var(--text-primary); }
+
+/* Redefine cal-cell to stack number + dot */
+.cal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: default;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  background: none;
+}
+
+/* Keep dot minimal in full calendar */
+.cal-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 /* Filter chips */
@@ -104,7 +219,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 0 40px;
+  padding: 8px 0 20px;
 }
 
 .journal-scroll::-webkit-scrollbar {
@@ -402,4 +517,59 @@
   font-size: 16px;
   color: var(--text-tertiary);
   flex-shrink: 0;
+}
+
+/* ── Calendar list section ──────────────────────────────── */
+.cal-cell-selected .cal-dot { background: var(--text-primary); }
+.cal-cell-selected { opacity: 1; }
+
+.cal-list-section { padding: 0 16px 8px; }
+.cal-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 8px;
+}
+.cal-list-date {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.cal-list-clear {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Ask Your Dreams FAB ─────────────────────────── */
+.journal-ask-fab {
+  position: absolute;
+  bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 100px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 5;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+.journal-ask-fab:active {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
 }

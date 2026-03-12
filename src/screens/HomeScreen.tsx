@@ -27,7 +27,7 @@ export function HomeScreen({ onRecord, onSettings }: HomeScreenProps) {
       {/* Center stage — halo + record button */}
       <div className="home-center">
         <div className="halo-container">
-          <DreamHalo recording={false} size={300} />
+          <DreamHalo recording={false} />
           <button
             className="record-btn"
             onClick={onRecord}
