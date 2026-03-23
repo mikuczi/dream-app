@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   auth, CONFIGURED,
-  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, fbSignOut,
+  GoogleAuthProvider, signInWithRedirect, getRedirectResult, fbSignOut,
   onAuthStateChanged, type FBUser,
 } from '../lib/firebase'
 
@@ -15,24 +15,43 @@ export interface FirebaseAuthState {
   configured: boolean
 }
 
-// On mobile browsers popups are blocked — use redirect flow instead
-const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent)
-
 export function useFirebaseAuth(): FirebaseAuthState {
   const [fbUser, setFbUser] = useState<FBUser | null>(null)
   const [status, setStatus] = useState<AuthStatus>('loading')
+  // Prevents treating the transient null auth state during redirect processing as signed-out
+  const redirectChecked = useRef(false)
 
   useEffect(() => {
     if (!auth || !CONFIGURED) {
       setStatus('signed-out')
       return
     }
-    // Pick up result after a Google redirect sign-in
-    getRedirectResult(auth).catch(() => {/* ignore */})
+
+    // Must resolve getRedirectResult before we trust a null auth state.
+    // Firebase emits onAuthStateChanged(null) before the redirect is processed,
+    // which would incorrectly clear the session.
+    getRedirectResult(auth)
+      .catch(() => {})
+      .finally(() => {
+        redirectChecked.current = true
+        // If onAuthStateChanged already fired null and we suppressed it,
+        // set signed-out now if there's still no user
+        if (!auth!.currentUser) {
+          setFbUser(null)
+          setStatus('signed-out')
+        }
+      })
 
     const unsub = onAuthStateChanged(auth, user => {
-      setFbUser(user ?? null)
-      setStatus(user ? 'signed-in' : 'signed-out')
+      if (user) {
+        setFbUser(user)
+        setStatus('signed-in')
+      } else if (redirectChecked.current) {
+        // Only declare signed-out once we know the redirect has been checked
+        setFbUser(null)
+        setStatus('signed-out')
+      }
+      // else: redirect still in flight — keep 'loading' state
     })
     return unsub
   }, [])
@@ -41,11 +60,7 @@ export function useFirebaseAuth(): FirebaseAuthState {
     if (!auth) return
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
-    if (isMobile) {
-      await signInWithRedirect(auth, provider)
-    } else {
-      await signInWithPopup(auth, provider)
-    }
+    await signInWithRedirect(auth, provider)
   }
 
   async function signOut() {

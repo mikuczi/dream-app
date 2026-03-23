@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut as fbSignOut, onAuthStateChanged, type User as FBUser } from 'firebase/auth'
+// signInWithPopup kept for potential future use
 import { getFirestore, doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy } from 'firebase/firestore'
 
 const firebaseConfig = {
