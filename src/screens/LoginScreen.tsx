@@ -2,19 +2,26 @@ import { useState } from 'react'
 import './LoginScreen.css'
 
 interface LoginScreenProps {
-  onContinue: (name: string, dob: string) => void
   onGoogleSignIn?: () => Promise<void>
   googleConfigured?: boolean
+  deferredPrompt?: any
+  onInstallSkipped?: () => void
 }
 
-export function LoginScreen({ onContinue, onGoogleSignIn, googleConfigured }: LoginScreenProps) {
-  const [name, setName] = useState('')
-  const [googleLoading, setGoogleLoading] = useState(false)
+function isStandalone() {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true
+  )
+}
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (name.trim()) onContinue(name.trim(), '')
-  }
+const isIOS     = /iphone|ipad|ipod/i.test(navigator.userAgent.toLowerCase())
+const isAndroid = /android/i.test(navigator.userAgent.toLowerCase())
+
+export function LoginScreen({ onGoogleSignIn, googleConfigured, deferredPrompt, onInstallSkipped }: LoginScreenProps) {
+  const [googleLoading,   setGoogleLoading]   = useState(false)
+  const [installing,      setInstalling]      = useState(false)
+  const [installDismissed, setInstallDismissed] = useState(false)
 
   async function handleGoogleSignIn() {
     if (!onGoogleSignIn) return
@@ -23,32 +30,53 @@ export function LoginScreen({ onContinue, onGoogleSignIn, googleConfigured }: Lo
     finally { setGoogleLoading(false) }
   }
 
+  async function handleInstall() {
+    if (!deferredPrompt) return
+    setInstalling(true)
+    try {
+      deferredPrompt.prompt()
+      await deferredPrompt.userChoice
+    } catch { /* dismissed */ }
+    setInstalling(false)
+  }
+
+  function handleDismissInstall() {
+    setInstallDismissed(true)
+    onInstallSkipped?.()
+  }
+
+  const showInstallBanner = !isStandalone() && !installDismissed && (deferredPrompt || isIOS)
+
   return (
     <div className="login-screen">
-      <div className="login-bg">
+
+      {/* ── Background ─────────────────────────────────────── */}
+      <div className="login-bg" aria-hidden="true">
         <div className="login-glow" />
         <div className="login-star ls1" /><div className="login-star ls2" />
         <div className="login-star ls3" /><div className="login-star ls4" />
         <div className="login-star ls5" /><div className="login-star ls6" />
         <div className="login-star ls7" /><div className="login-star ls8" />
       </div>
+
+      {/* ── Wordmark ───────────────────────────────────────── */}
       <div className="login-top">
         <div className="login-moon-wrap">
           <svg className="login-moon" viewBox="0 0 80 80" fill="none">
             <path d="M52 10C38 10 27 21 27 35s11 25 25 25c4 0 7.8-.9 11.2-2.5C58.4 62.6 50.7 68 42 68 27.6 68 16 56.4 16 42S27.6 16 42 16c3.7 0 7.2.8 10.4 2.2.2-.7.3-1.4.4-2.1L52 10z"
               fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
             <circle cx="56" cy="20" r="1.5" fill="rgba(255,255,255,0.6)"/>
-            <circle cx="62" cy="30" r="1" fill="rgba(255,255,255,0.4)"/>
-            <circle cx="50" cy="14" r="1" fill="rgba(255,255,255,0.5)"/>
+            <circle cx="62" cy="30" r="1"   fill="rgba(255,255,255,0.4)"/>
+            <circle cx="50" cy="14" r="1"   fill="rgba(255,255,255,0.5)"/>
           </svg>
         </div>
         <h1 className="login-wordmark">reverie</h1>
         <p className="login-tagline">speak with your dreams</p>
       </div>
 
-      {/* Google SSO — shown when Firebase is configured */}
-      {googleConfigured && (
-        <div className="login-google-wrap">
+      {/* ── Sign in ────────────────────────────────────────── */}
+      <div className="login-actions">
+        {googleConfigured ? (
           <button
             className="login-google-btn"
             onClick={handleGoogleSignIn}
@@ -63,33 +91,57 @@ export function LoginScreen({ onContinue, onGoogleSignIn, googleConfigured }: Lo
             </svg>
             {googleLoading ? 'Signing in…' : 'Continue with Google'}
           </button>
-          <div className="login-divider"><span>or</span></div>
+        ) : (
+          <p className="login-no-auth">Sign-in not configured.</p>
+        )}
+      </div>
+
+      {/* ── Install PWA banner ─────────────────────────────── */}
+      {showInstallBanner && (
+        <div className="login-install-banner">
+          <div className="login-install-top">
+            <span className="login-install-icon">📲</span>
+            <div className="login-install-text">
+              <span className="login-install-title">Add to Home Screen</span>
+              <span className="login-install-sub">For the best experience</span>
+            </div>
+            <button className="login-install-dismiss" onClick={handleDismissInstall} aria-label="Dismiss">×</button>
+          </div>
+
+          {isIOS ? (
+            <div className="login-install-steps">
+              <div className="login-install-step">
+                <span className="login-install-step-num">1</span>
+                <span>Tap the <strong>Share</strong> button
+                  <svg className="login-share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 12H4a1 1 0 00-1 1v7a1 1 0 001 1h16a1 1 0 001-1v-7a1 1 0 00-1-1h-4"/>
+                    <polyline points="12 2 12 15"/>
+                    <polyline points="9 5 12 2 15 5"/>
+                  </svg>
+                  in Safari
+                </span>
+              </div>
+              <div className="login-install-step">
+                <span className="login-install-step-num">2</span>
+                <span>Scroll down and tap <strong>Add to Home Screen</strong></span>
+              </div>
+              <div className="login-install-step">
+                <span className="login-install-step-num">3</span>
+                <span>Tap <strong>Add</strong> — done!</span>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="login-install-btn"
+              onClick={handleInstall}
+              disabled={installing}
+            >
+              {installing ? 'Installing…' : `Install App${isAndroid ? ' on Android' : ''}`}
+            </button>
+          )}
         </div>
       )}
 
-      <form className="login-form" onSubmit={handleSubmit}>
-        <div className="login-field">
-          <label className="login-label" htmlFor="login-name">Your name</label>
-          <input
-            id="login-name"
-            className="login-input"
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="How should we call you?"
-            autoFocus
-            autoComplete="given-name"
-          />
-        </div>
-
-        <button
-          className="login-btn"
-          type="submit"
-          disabled={!name.trim()}
-        >
-          Begin journaling
-        </button>
-      </form>
     </div>
   )
 }

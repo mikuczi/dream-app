@@ -5,7 +5,6 @@ import { useFirebaseAuth } from './hooks/useFirebaseAuth'
 import { saveUserProfile } from './lib/firestore'
 import { analyzeConnections } from './utils/dreamConnections'
 
-import { InstallScreen }         from './screens/InstallScreen'
 import { PaywallScreen }         from './screens/PaywallScreen'
 import { LoginScreen }          from './screens/LoginScreen'
 import { OnboardingScreen }     from './screens/OnboardingScreen'
@@ -50,29 +49,19 @@ function loadUser(): User | null {
   catch { return null }
 }
 
-type AppState = 'install' | 'login' | 'onboarding' | 'app'
+type AppState = 'login' | 'onboarding' | 'app'
 type Overlay  = 'recording' | 'log' | 'settings' | 'whatsapp' | 'dreamdetail' | null
 
-function isRunningStandalone() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true
-  )
-}
 
 export function App() {
   const { fbUser, status: fbStatus, signIn: fbSignIn, signOut: fbSignOut, configured } = useFirebaseAuth()
   const { dreams, addDream, updateDream, deleteDream } = useDreams(fbUser?.uid ?? null)
 
   const [appState, setAppState] = useState<AppState>(() => {
-    // Skip install screen if already running as installed PWA
-    if (isRunningStandalone()) {
-      const user = loadUser()
-      if (!user) return 'login'
-      if (!localStorage.getItem(KEY_ONBOARDED)) return 'onboarding'
-      return 'app'
-    }
-    return 'install'
+    const user = loadUser()
+    if (!user) return 'login'
+    if (!localStorage.getItem(KEY_ONBOARDED)) return 'onboarding'
+    return 'app'
   })
   const [deferredInstall, setDeferredInstall]   = useState<any>(null)
   const [installSkipped,  setInstallSkipped]    = useState(false)
@@ -188,18 +177,6 @@ export function App() {
     }
   }, [fbUser, fbStatus])
 
-  // ── Login ─────────────────────────────────────────────
-  function handleLogin(name: string, dob: string) {
-    const zodiacSign = dob ? getZodiacSign(dob).sign : 'pisces' as const
-    const newUser: User = {
-      id: Date.now().toString(),
-      name, email: '', passwordHash: '', dob, zodiacSign,
-      createdAt: new Date().toISOString(),
-    }
-    localStorage.setItem(KEY_USER, JSON.stringify(newUser))
-    setUser(newUser)
-    setAppState('onboarding')
-  }
 
   function handleOnboardingDone(data?: { platform?: 'whatsapp' | 'telegram'; phone?: string; dialCode?: string }) {
     localStorage.setItem(KEY_ONBOARDED, '1')
@@ -286,32 +263,17 @@ export function App() {
   }
 
   // ── Render ────────────────────────────────────────────
-  if (appState === 'install') {
+  if (appState === 'login') {
     return (
       <div className="app-shell">
-        <InstallScreen
+        <LoginScreen
+          onGoogleSignIn={fbSignIn}
+          googleConfigured={configured}
           deferredPrompt={deferredInstall}
-          onInstalled={() => {
-            setDeferredInstall(null)
-            const user = loadUser()
-            if (!user) setAppState('login')
-            else if (!localStorage.getItem(KEY_ONBOARDED)) setAppState('onboarding')
-            else setAppState('app')
-          }}
-          onSkip={() => {
-            setInstallSkipped(true)
-            const user = loadUser()
-            if (!user) setAppState('login')
-            else if (!localStorage.getItem(KEY_ONBOARDED)) setAppState('onboarding')
-            else setAppState('app')
-          }}
+          onInstallSkipped={() => setInstallSkipped(true)}
         />
       </div>
     )
-  }
-
-  if (appState === 'login') {
-    return <div className="app-shell"><LoginScreen onContinue={handleLogin} onGoogleSignIn={fbSignIn} googleConfigured={configured} /></div>
   }
 
   if (appState === 'onboarding') {
