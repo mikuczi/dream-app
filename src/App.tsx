@@ -170,7 +170,9 @@ export function App() {
     } else if (fbStatus === 'signed-out') {
       if (configured) {
         localStorage.removeItem(KEY_USER)
-        localStorage.removeItem(KEY_ONBOARDED)
+        // Do NOT clear KEY_ONBOARDED here — the auth listener fires signed-out
+        // transiently on every page load, which would wipe onboarding progress.
+        // KEY_ONBOARDED is only cleared by handleSignOut (explicit sign-out).
         setUser(null)
         setAppState('login')
       }

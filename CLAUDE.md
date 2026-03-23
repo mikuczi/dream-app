@@ -1,7 +1,7 @@
 # Dream Journal – Claude Code Rules
 
 This is a React 18 + TypeScript PWA — a dark-mode dream journaling app with voice recording, AI interpretation, social features, and badge system.
-Deployment: Netlify at `speakwithdreams.netlify.app`.
+Deployment: Vercel at `speakwithdreams.vercel.app` (frontend) + Railway (backend).
 
 ---
 
