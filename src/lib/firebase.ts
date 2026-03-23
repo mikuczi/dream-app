@@ -3,7 +3,7 @@
 // Firebase Console → Project Settings → Your apps → Web app
 // ─────────────────────────────────────────────────────────
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged, type User as FBUser } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut as fbSignOut, onAuthStateChanged, type User as FBUser } from 'firebase/auth'
 import { getFirestore, doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -28,5 +28,5 @@ try {
 
 export { auth, db, CONFIGURED }
 export type { FBUser }
-export { GoogleAuthProvider, signInWithPopup, fbSignOut, onAuthStateChanged }
+export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, fbSignOut, onAuthStateChanged }
 export { doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy }
