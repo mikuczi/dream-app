@@ -1,0 +1,341 @@
+.cs-screen {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+.cs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 52px 16px 10px;
+  flex-shrink: 0;
+  z-index: 5;
+}
+
+.cs-back {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cs-header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.cs-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.cs-subtitle {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+}
+
+/* ── Filters ─────────────────────────────────────────────── */
+.cs-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 16px 12px;
+  flex-shrink: 0;
+}
+
+.cs-time-tabs {
+  display: flex;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px;
+  gap: 2px;
+  align-self: flex-start;
+}
+
+.cs-time-tab {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.cs-time-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.cs-mood-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cs-mood-chip {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+.cs-mood-chip.active {
+  background: rgba(155,140,255,0.1);
+}
+
+.cs-mood-clear {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Canvas ──────────────────────────────────────────────── */
+.cs-canvas-wrap {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cs-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: pointer;
+}
+
+/* ── Empty state ─────────────────────────────────────────── */
+.cs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 60px 40px;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.cs-empty-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.cs-empty-sub {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 240px;
+}
+
+/* ── Legend ──────────────────────────────────────────────── */
+.cs-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+}
+
+.cs-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cs-legend-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.cs-legend-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: capitalize;
+}
+
+.cs-legend-count {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+/* ── Bottom sheet scrim ──────────────────────────────────── */
+.cs-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+}
+
+/* ── Bottom sheet ────────────────────────────────────────── */
+.cs-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  z-index: 21;
+  padding: 12px 20px 40px;
+  animation: cs-sheet-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cs-sheet-in {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.cs-sheet-handle {
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  margin: 0 auto 16px;
+}
+
+.cs-sheet-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.cs-sheet-mood-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.cs-sheet-meta {
+  flex: 1;
+}
+
+.cs-sheet-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0 0 3px;
+  line-height: 1.2;
+}
+
+.cs-sheet-date {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.cs-sheet-conn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.cs-sheet-conn-val {
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.cs-sheet-conn-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cs-sheet-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.cs-sheet-tag {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+.cs-sheet-reasons {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-style: italic;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.cs-sheet-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--text-primary);
+  color: var(--bg);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.cs-sheet-open:active { opacity: 0.85; }

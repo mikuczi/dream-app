@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useDreams } from './hooks/useDreams'
 import { getZodiacSign } from './utils/astro'
 import { useFirebaseAuth } from './hooks/useFirebaseAuth'
 import { saveUserProfile } from './lib/firestore'
+import { analyzeConnections } from './utils/dreamConnections'
 
+import { InstallScreen }         from './screens/InstallScreen'
+import { PaywallScreen }         from './screens/PaywallScreen'
 import { LoginScreen }          from './screens/LoginScreen'
 import { OnboardingScreen }     from './screens/OnboardingScreen'
 import { RecordingScreen }      from './screens/RecordingScreen'
@@ -23,6 +26,8 @@ import { AskDreamsScreen }      from './screens/AskDreamsScreen'
 import { LibraryScreen }        from './screens/LibraryScreen'
 import { MeScreen }             from './screens/MeScreen'
 import { SocialScreen }         from './screens/SocialScreen'
+import { DreamCircleScreen, type DreamCircle } from './screens/DreamCircleScreen'
+import { DreamConstellationScreen } from './screens/DreamConstellationScreen'
 import { DreamDetailScreen }    from './screens/DreamDetailScreen'
 import { WhatsAppScreen }       from './screens/WhatsAppScreen'
 import { SettingsScreen }       from './screens/SettingsScreen'
@@ -31,30 +36,46 @@ import { SearchScreen }         from './screens/SearchScreen'
 import { BottomBar }            from './components/BottomBar'
 import { SideDrawer }           from './components/SideDrawer'
 import type { ActiveView }      from './components/BottomBar'
-import type { Dream, User }     from './types/dream'
+import type { Dream, User, DreamVisibility } from './types/dream'
+import { getEarnedBadgeIds, BADGES, type BadgeFlags } from './data/badges'
 import { STORY_DREAMS, COMMUNITY_USERS } from './data/mockCommunity'
 
-const KEY_USER      = 'dj_user'
-const KEY_ONBOARDED = 'dj_onboarded'
+const KEY_USER       = 'dj_user'
+const KEY_ONBOARDED  = 'dj_onboarded'
+const KEY_SEEN_BADGES = 'dj_seen_badges'
+const KEY_CHECKIN_DATE = 'dj_checkin_date'
 
 function loadUser(): User | null {
   try { return JSON.parse(localStorage.getItem(KEY_USER) ?? 'null') }
   catch { return null }
 }
 
-type AppState = 'login' | 'onboarding' | 'app'
+type AppState = 'install' | 'login' | 'onboarding' | 'app'
 type Overlay  = 'recording' | 'log' | 'settings' | 'whatsapp' | 'dreamdetail' | null
+
+function isRunningStandalone() {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true
+  )
+}
 
 export function App() {
   const { fbUser, status: fbStatus, signIn: fbSignIn, signOut: fbSignOut, configured } = useFirebaseAuth()
   const { dreams, addDream, updateDream, deleteDream } = useDreams(fbUser?.uid ?? null)
 
   const [appState, setAppState] = useState<AppState>(() => {
-    const user = loadUser()
-    if (!user) return 'login'
-    if (!localStorage.getItem(KEY_ONBOARDED)) return 'onboarding'
-    return 'app'
+    // Skip install screen if already running as installed PWA
+    if (isRunningStandalone()) {
+      const user = loadUser()
+      if (!user) return 'login'
+      if (!localStorage.getItem(KEY_ONBOARDED)) return 'onboarding'
+      return 'app'
+    }
+    return 'install'
   })
+  const [deferredInstall, setDeferredInstall]   = useState<any>(null)
+  const [installSkipped,  setInstallSkipped]    = useState(false)
 
   const [user,              setUser]              = useState<User | null>(loadUser)
   const [activeView,        setActiveView]        = useState<ActiveView>('journal')
@@ -62,11 +83,76 @@ export function App() {
   const [pendingTranscript, setPendingTranscript] = useState('')
   const [focusDream,        setFocusDream]        = useState<Dream | null>(null)
   const [storyIndex,        setStoryIndex]        = useState<number | null>(null)
+  const [myStories,         setMyStories]         = useState<Dream[]>([])
+  const [circle,            setCircle]            = useState<DreamCircle>({ name: 'Inner Circle', color: '#9B8CFF', memberIds: [] })
+  const [badgeFlags,        setBadgeFlags]        = useState<BadgeFlags>({ viewedConstellation: false, createdCircle: false })
+  const [paywallOpen,       setPaywallOpen]       = useState(false)
+  const [checkInOpen,       setCheckInOpen]       = useState(false)
+  const [newBadge,          setNewBadge]          = useState<{ name: string; icon: string } | null>(null)
+  const seenBadgeIds = useRef<Set<string>>(new Set(JSON.parse(localStorage.getItem(KEY_SEEN_BADGES) ?? '[]')))
   const [drawerOpen,        setDrawerOpen]        = useState(false)
   const [searchOpen,        setSearchOpen]        = useState(false)
   const [notifOpen,         setNotifOpen]         = useState(false)
   const [notifications,     setNotifications]     = useState<{ id: string; text: string; time: string; read: boolean }[]>([])
   const [saveToast,         setSaveToast]         = useState('')
+  const seenConnectionIds = useRef<Set<string>>(new Set())
+
+  // ── Capture PWA install prompt ────────────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault()
+      setDeferredInstall(e)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  // ── Dream connections → notifications ─────────────────
+  useEffect(() => {
+    if (dreams.length < 2) return
+    const connections = analyzeConnections(dreams)
+    const newOnes = connections.filter(c => !seenConnectionIds.current.has(c.id))
+    if (!newOnes.length) return
+    newOnes.forEach(c => seenConnectionIds.current.add(c.id))
+    setNotifications(prev => [
+      ...newOnes.map(c => ({
+        id: c.id,
+        text: c.notifText,
+        time: 'Just now',
+        read: false,
+      })),
+      ...prev,
+    ])
+  }, [dreams])
+
+  // ── Badge unlock toasts ────────────────────────────────
+  useEffect(() => {
+    if (appState !== 'app') return
+    const earned = getEarnedBadgeIds(dreams, badgeFlags)
+    for (const id of earned) {
+      if (!seenBadgeIds.current.has(id)) {
+        seenBadgeIds.current.add(id)
+        localStorage.setItem(KEY_SEEN_BADGES, JSON.stringify([...seenBadgeIds.current]))
+        const badge = BADGES.find(b => b.id === id)
+        if (badge) {
+          setNewBadge({ name: badge.name, icon: badge.icon })
+          setTimeout(() => setNewBadge(null), 3500)
+          break // show one at a time
+        }
+      }
+    }
+  }, [dreams, badgeFlags, appState])
+
+  // ── Morning check-in (6am–11am, once per day) ─────────
+  useEffect(() => {
+    if (appState !== 'app') return
+    const hour = new Date().getHours()
+    if (hour < 6 || hour >= 11) return
+    const today = new Date().toDateString()
+    if (localStorage.getItem(KEY_CHECKIN_DATE) === today) return
+    const timer = setTimeout(() => setCheckInOpen(true), 1200)
+    return () => clearTimeout(timer)
+  }, [appState])
 
   // ── Sync Firebase auth → local user profile ───────────
   useEffect(() => {
@@ -93,8 +179,12 @@ export function App() {
         setAppState('app')
       }
     } else if (fbStatus === 'signed-out') {
-      // Only reset if we were previously signed in via Firebase
-      // (don't override local-only login flow)
+      if (configured) {
+        localStorage.removeItem(KEY_USER)
+        localStorage.removeItem(KEY_ONBOARDED)
+        setUser(null)
+        setAppState('login')
+      }
     }
   }, [fbUser, fbStatus])
 
@@ -111,8 +201,23 @@ export function App() {
     setAppState('onboarding')
   }
 
-  function handleOnboardingDone() {
+  function handleOnboardingDone(data?: { platform?: 'whatsapp' | 'telegram'; phone?: string; dialCode?: string }) {
     localStorage.setItem(KEY_ONBOARDED, '1')
+    if (data?.phone) {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL
+      if (backendUrl) {
+        fetch(`${backendUrl}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone:    data.phone,
+            platform: data.platform,
+            userId:   user?.id ?? 'anonymous',
+            name:     user?.name ?? 'Dreamer',
+          }),
+        }).catch(() => {/* non-blocking */})
+      }
+    }
     setAppState('app')
   }
 
@@ -143,17 +248,24 @@ export function App() {
     setOverlay('dreamdetail')
   }
 
-  function handleTogglePrivacy(id: string) {
-    const dream = dreams.find(d => d.id === id)
-    if (!dream) return
-    updateDream(id, { isPrivate: !dream.isPrivate })
-    if (focusDream?.id === id) setFocusDream({ ...focusDream, isPrivate: !focusDream.isPrivate })
+  function handleSetVisibility(id: string, visibility: DreamVisibility) {
+    updateDream(id, { visibility, isPrivate: visibility === 'private' })
+    if (focusDream?.id === id) setFocusDream({ ...focusDream, visibility, isPrivate: visibility === 'private' })
   }
 
   function handleDeleteDream(id: string) {
     deleteDream(id)
     setOverlay(null)
     setFocusDream(null)
+  }
+
+  function handleShareToStory(dream: Dream) {
+    setMyStories(prev => [dream, ...prev.filter(d => d.id !== dream.id)])
+  }
+
+  function handleShareToCircle(dream: Dream) {
+    updateDream(dream.id, { visibility: 'circle', isPrivate: false })
+    if (focusDream?.id === dream.id) setFocusDream({ ...focusDream, visibility: 'circle' })
   }
 
   function handleBookmarkDream(id: string) {
@@ -174,12 +286,44 @@ export function App() {
   }
 
   // ── Render ────────────────────────────────────────────
+  if (appState === 'install') {
+    return (
+      <div className="app-shell">
+        <InstallScreen
+          deferredPrompt={deferredInstall}
+          onInstalled={() => {
+            setDeferredInstall(null)
+            const user = loadUser()
+            if (!user) setAppState('login')
+            else if (!localStorage.getItem(KEY_ONBOARDED)) setAppState('onboarding')
+            else setAppState('app')
+          }}
+          onSkip={() => {
+            setInstallSkipped(true)
+            const user = loadUser()
+            if (!user) setAppState('login')
+            else if (!localStorage.getItem(KEY_ONBOARDED)) setAppState('onboarding')
+            else setAppState('app')
+          }}
+        />
+      </div>
+    )
+  }
+
   if (appState === 'login') {
     return <div className="app-shell"><LoginScreen onContinue={handleLogin} onGoogleSignIn={fbSignIn} googleConfigured={configured} /></div>
   }
 
   if (appState === 'onboarding') {
-    return <div className="app-shell"><OnboardingScreen onDone={handleOnboardingDone} /></div>
+    return (
+      <div className="app-shell">
+        <OnboardingScreen
+          onDone={handleOnboardingDone}
+          deferredPrompt={installSkipped ? deferredInstall : null}
+          installSkipped={installSkipped}
+        />
+      </div>
+    )
   }
 
   return (
@@ -195,10 +339,18 @@ export function App() {
         {activeView === 'digest'      && <DreamerDigestScreen dreams={dreams} />}
         {activeView === 'drafts'      && <DraftsScreen onResumeDraft={t => { setPendingTranscript(t); setOverlay('log') }} />}
         {activeView === 'bookmarks'   && <BookmarksScreen dreams={dreams} onOpenDream={handleOpenDream} />}
-        {activeView === 'insights'    && <InsightsScreen dreams={dreams} user={user} />}
-        {activeView === 'ask'         && <AskDreamsScreen dreams={dreams} />}
+        {activeView === 'insights'    && <InsightsScreen dreams={dreams} user={user} onConstellation={() => { setActiveView('constellation'); setBadgeFlags(f => ({ ...f, viewedConstellation: true })) }} />}
+        {activeView === 'ask'           && <AskDreamsScreen dreams={dreams} />}
+        {activeView === 'constellation' && (
+          <DreamConstellationScreen
+            dreams={dreams}
+            onOpenDream={id => { const d = dreams.find(x => x.id === id); if (d) handleOpenDream(d) }}
+            onBack={() => setActiveView('insights')}
+          />
+        )}
         {activeView === 'library'     && <LibraryScreen />}
-        {activeView === 'social'      && <SocialScreen onOpenStory={idx => setStoryIndex(idx)} onAddStory={() => setOverlay('recording')} myName={user?.name} />}
+        {activeView === 'social'      && <SocialScreen onOpenStory={idx => setStoryIndex(idx)} onAddStory={() => setOverlay('recording')} myName={user?.name} myStories={myStories} dreams={dreams} circle={circle} onManageCircle={() => setActiveView('circle')} />}
+        {activeView === 'circle'      && <DreamCircleScreen circle={circle} dreams={dreams} myName={user?.name} onUpdate={c => { setCircle(c); if (c.memberIds.length > 0) setBadgeFlags(f => ({ ...f, createdCircle: true })) }} onBack={() => setActiveView('social')} />}
         {activeView === 'me'          && (
           <MeScreen
             user={user}
@@ -208,6 +360,8 @@ export function App() {
             onSignIn={() => setAppState('login')}
             onRecord={() => setOverlay('recording')}
             onSettings={() => setOverlay('settings')}
+            onPaywall={() => setPaywallOpen(true)}
+            badgeFlags={badgeFlags}
           />
         )}
       </div>
@@ -247,9 +401,12 @@ export function App() {
           <DreamDetailScreen
             dream={focusDream}
             onBack={() => setOverlay(null)}
-            onTogglePrivacy={handleTogglePrivacy}
+            onSetVisibility={handleSetVisibility}
             onDelete={handleDeleteDream}
             onBookmark={handleBookmarkDream}
+            onShareToStory={handleShareToStory}
+            onShareToCircle={handleShareToCircle}
+            hasCircle={circle.memberIds.length > 0}
           />
         </div>
       )}
@@ -333,6 +490,49 @@ export function App() {
       {/* ── Save toast ───────────────────────────────── */}
       {saveToast && (
         <div className="app-save-toast">{saveToast}</div>
+      )}
+
+      {/* ── Badge unlock toast ───────────────────────── */}
+      {newBadge && (
+        <div className="app-badge-toast">
+          <span className="app-badge-toast-icon">{newBadge.icon}</span>
+          <div className="app-badge-toast-text">
+            <span className="app-badge-toast-label">Achievement unlocked</span>
+            <span className="app-badge-toast-name">{newBadge.name}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Morning check-in ─────────────────────────── */}
+      {checkInOpen && (
+        <div className="app-checkin-overlay" onClick={() => { setCheckInOpen(false); localStorage.setItem(KEY_CHECKIN_DATE, new Date().toDateString()) }}>
+          <div className="app-checkin-sheet" onClick={e => e.stopPropagation()}>
+            <div className="app-checkin-handle" />
+            <span className="app-checkin-icon">🌙</span>
+            <h3 className="app-checkin-title">Did you dream last night?</h3>
+            <p className="app-checkin-sub">Capture it before it fades.</p>
+            <div className="app-checkin-btns">
+              <button className="app-checkin-yes" onClick={() => {
+                setCheckInOpen(false)
+                localStorage.setItem(KEY_CHECKIN_DATE, new Date().toDateString())
+                setOverlay('recording')
+              }}>
+                Yes, log it →
+              </button>
+              <button className="app-checkin-no" onClick={() => {
+                setCheckInOpen(false)
+                localStorage.setItem(KEY_CHECKIN_DATE, new Date().toDateString())
+              }}>
+                Not today
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Paywall ───────────────────────────────────── */}
+      {paywallOpen && (
+        <PaywallScreen onClose={() => setPaywallOpen(false)} />
       )}
     </div>
   )

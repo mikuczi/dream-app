@@ -8,6 +8,7 @@ import type { DreamSymbol } from '../data/symbols'
 interface InsightsScreenProps {
   dreams: Dream[]
   user: User | null
+  onConstellation?: () => void
 }
 
 const MOOD_SYMBOLS: Record<string, string> = {
@@ -32,7 +33,7 @@ function getLast7Days(): Date[] {
   return days
 }
 
-export function InsightsScreen({ dreams, user }: InsightsScreenProps) {
+export function InsightsScreen({ dreams, user, onConstellation }: InsightsScreenProps) {
   const sorted = useMemo(
     () => [...dreams].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [dreams]
@@ -102,6 +103,32 @@ export function InsightsScreen({ dreams, user }: InsightsScreenProps) {
             <h2 className="insights-zodiac-name">Dream Insights</h2>
             <p className="insights-natal-sub">Sign in to unlock your natal chart reading.</p>
           </div>
+        )}
+
+        {/* Constellation entry */}
+        {onConstellation && dreams.length >= 2 && (
+          <button className="insights-constellation-btn" onClick={onConstellation}>
+            <div className="insights-constellation-preview">
+              <svg width="60" height="60" viewBox="0 0 60 60" fill="none" opacity="0.8">
+                <circle cx="30" cy="30" r="4" fill="#9B8CFF" opacity="0.7"/>
+                <circle cx="12" cy="14" r="2.5" fill="#4ab893" opacity="0.6"/>
+                <circle cx="50" cy="12" r="2.5" fill="#f4c97b" opacity="0.6"/>
+                <circle cx="48" cy="46" r="2.5" fill="#e05a6b" opacity="0.6"/>
+                <circle cx="14" cy="46" r="2.5" fill="#e09060" opacity="0.6"/>
+                <line x1="14" y1="15" x2="26" y2="27" stroke="rgba(200,190,255,0.35)" strokeWidth="0.8"/>
+                <line x1="48" y1="14" x2="34" y2="27" stroke="rgba(200,190,255,0.35)" strokeWidth="0.8"/>
+                <line x1="47" y1="45" x2="34" y2="33" stroke="rgba(200,190,255,0.35)" strokeWidth="0.8"/>
+                <line x1="15" y1="45" x2="26" y2="33" stroke="rgba(200,190,255,0.35)" strokeWidth="0.8"/>
+              </svg>
+            </div>
+            <div className="insights-constellation-text">
+              <span className="insights-constellation-title">Dream Constellation</span>
+              <span className="insights-constellation-sub">{dreams.length} dreams mapped · {dreams.length > 1 ? 'see connections' : ''}</span>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="insights-constellation-arrow">
+              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          </button>
         )}
 
         {/* Stats */}

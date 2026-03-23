@@ -151,8 +151,8 @@
 .dd-tab-content { padding: 0 24px; }
 
 .dd-transcript {
-  font-family: var(--font-display); font-style: italic; font-size: 16px;
-  line-height: 1.7; color: var(--text-secondary); margin-bottom: 24px;
+  font-family: var(--font-display); font-size: 16px;
+  line-height: 1.8; color: var(--text-secondary); margin-bottom: 24px;
 }
 
 .dd-notes-section { margin-bottom: 24px; }
@@ -240,7 +240,7 @@
 .dd-interpretations { display: flex; flex-direction: column; gap: 16px; }
 .dd-interp-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; }
 .dd-interp-framework { font-family: var(--font-ui); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: var(--text-tertiary); margin-bottom: 10px; }
-.dd-interp-text { font-family: var(--font-display); font-style: italic; font-size: 14px; line-height: 1.7; color: var(--text-secondary); }
+.dd-interp-text { font-family: var(--font-display); font-size: 15px; line-height: 1.75; color: var(--text-secondary); }
 
 /* ── Tags tab ────────────────────────────────────────────── */
 .dd-tags-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
@@ -282,6 +282,86 @@
 @keyframes ddToastIn {
   from { opacity: 0; transform: translateX(-50%) translateY(8px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Visibility picker in menu ───────────────────────────── */
+.dd-vis-section {
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.dd-vis-label {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+}
+
+.dd-vis-row {
+  display: flex;
+  gap: 6px;
+}
+
+.dd-vis-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.dd-vis-btn.active {
+  background: rgba(155,140,255,0.12);
+  border-color: rgba(155,140,255,0.4);
+  color: var(--text-primary);
+}
+
+.dd-vis-icon {
+  font-size: 14px;
+}
+
+/* ── Visibility badge (on the dream screen) ──────────────── */
+.dd-vis-badge {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(155,140,255,0.2);
+  border: 1px solid rgba(155,140,255,0.4);
+  border-radius: 100px;
+  padding: 6px 16px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(180,165,255,0.9);
+  z-index: 20;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.dd-vis-badge-private {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  color: var(--text-tertiary);
+}
+
+/* ── Circle toast ────────────────────────────────────────── */
+.dd-toast-circle {
+  background: rgba(155,140,255,0.25);
+  border-color: rgba(155,140,255,0.4);
 }
 
 /* ── Map tab ─────────────────────────────────────────────── */

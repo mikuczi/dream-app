@@ -1,60 +1,45 @@
 /**
- * Simple JSON file-backed dream database.
- * Mirrors the localStorage schema used by the frontend.
+ * Dream persistence — Firestore-backed.
+ * Replaces the old JSON file store so dreams survive deploys and are per-user.
  */
-import { readFileSync, writeFileSync, existsSync } from 'fs'
-import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
+import { db } from './firebase-admin.js'
 
-const __dir = dirname(fileURLToPath(import.meta.url))
-const DB_PATH = join(__dir, 'dreams.json')
+const COLLECTION = 'dreams'
 
-function load() {
-  if (!existsSync(DB_PATH)) return []
-  try { return JSON.parse(readFileSync(DB_PATH, 'utf-8')) } catch { return [] }
-}
-
-function save(dreams) {
-  writeFileSync(DB_PATH, JSON.stringify(dreams, null, 2))
-}
-
-export function createDream({ transcript, whatsappFrom, analysisPromise }) {
-  const dreams = load()
+export async function createDream({ transcript, whatsappFrom, userId, analysisPromise }) {
   const dream = {
-    id:         randomUUID(),
-    title:      'WhatsApp Voice Note',
-    content:    transcript,
+    id:           randomUUID(),
+    title:        'WhatsApp Voice Note',
+    content:      transcript,
     transcript,
-    tags:       [],
-    mood:       'strange',
-    clarity:    5,
-    lucid:      false,
-    isPrivate:  false,
-    source:     'whatsapp',
-    whatsappFrom,
-    createdAt:  new Date().toISOString(),
-    analysis:   null,   // filled in async
+    tags:         [],
+    mood:         'strange',
+    clarity:      5,
+    lucid:        false,
+    isPrivate:    false,
+    source:       'whatsapp',
+    whatsappFrom: whatsappFrom ?? null,
+    userId:       userId ?? null,
+    createdAt:    new Date().toISOString(),
+    analysis:     null,
   }
-  dreams.unshift(dream)
-  save(dreams)
 
-  // Resolve AI analysis in background and patch the record
+  await db.collection(COLLECTION).doc(dream.id).set(dream)
+  console.log(`[db] dream created id=${dream.id}`)
+
+  // Patch the record once Claude analysis resolves (non-blocking)
   if (analysisPromise) {
-    analysisPromise.then(analysis => {
-      const all = load()
-      const idx = all.findIndex(d => d.id === dream.id)
-      if (idx !== -1) {
-        all[idx] = { ...all[idx], ...analysis }
-        save(all)
-        console.log(`[db] analysis saved for dream ${dream.id}`)
-      }
-    }).catch(err => console.error('[db] analysis error:', err))
+    analysisPromise
+      .then(analysis => db.collection(COLLECTION).doc(dream.id).update(analysis))
+      .then(() => console.log(`[db] analysis patched for dream ${dream.id}`))
+      .catch(err => console.error('[db] analysis error:', err))
   }
 
   return dream
 }
 
-export function getAllDreams() {
-  return load()
+export async function getAllDreams() {
+  const snap = await db.collection(COLLECTION).orderBy('createdAt', 'desc').get()
+  return snap.docs.map(d => d.data())
 }

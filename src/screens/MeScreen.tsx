@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import './MeScreen.css'
 import type { Dream, User } from '../types/dream'
 import { getZodiacSymbol, getZodiacElement, ZODIAC_DREAM_DESCRIPTIONS } from '../utils/astro'
+import { BADGES, getEarnedBadgeIds, type BadgeFlags } from '../data/badges'
 
 interface MeScreenProps {
   user: User | null
@@ -11,6 +12,8 @@ interface MeScreenProps {
   onSignIn: () => void
   onRecord: () => void
   onSettings?: () => void
+  onPaywall?: () => void
+  badgeFlags?: BadgeFlags
 }
 
 function getInitials(name: string) {
@@ -34,7 +37,7 @@ function calculateStreak(dreams: Dream[]) {
   return streak
 }
 
-export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onRecord, onSettings }: MeScreenProps) {
+export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onRecord, onSettings, onPaywall, badgeFlags }: MeScreenProps) {
 
   // Guest
   if (!user) {
@@ -53,6 +56,10 @@ export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onReco
   }
 
   const streak    = calculateStreak(dreams)
+  const earnedIds = useMemo(
+    () => getEarnedBadgeIds(dreams, badgeFlags ?? { viewedConstellation: false, createdCircle: false }),
+    [dreams, badgeFlags]
+  )
   const symbolSet = useMemo(() => {
     const counts: Record<string, number> = {}
     dreams.forEach(d => d.tags.forEach(t => { counts[t] = (counts[t] ?? 0) + 1 }))
@@ -137,6 +144,38 @@ export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onReco
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── Badges ─────────────────────────────────────── */}
+        <div className="me-section">
+          <p className="me-section-label">Achievements</p>
+          <div className="me-badges-grid">
+            {BADGES.map(badge => {
+              const earned = earnedIds.has(badge.id)
+              return (
+                <div key={badge.id} className={`me-badge ${earned ? 'earned' : 'locked'}`}>
+                  <span className="me-badge-icon">{badge.icon}</span>
+                  <span className="me-badge-name">{badge.name}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Paywall CTA ─────────────────────────────────── */}
+        {onPaywall && (
+          <div className="me-section">
+            <button className="me-paywall-cta" onClick={onPaywall}>
+              <div className="me-paywall-cta-left">
+                <span className="me-paywall-star">✦</span>
+                <div>
+                  <p className="me-paywall-title">Unlock Premium</p>
+                  <p className="me-paywall-sub">AI analysis, constellation map & more</p>
+                </div>
+              </div>
+              <span className="me-cta-chevron">›</span>
+            </button>
           </div>
         )}
 

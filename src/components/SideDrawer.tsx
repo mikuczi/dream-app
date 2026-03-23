@@ -116,11 +116,20 @@ const I = {
   ),
 }
 
+const I_circle = (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <path d="M12 2.5C8 2.5 5 5.5 5 9.5s3 7 7 7c1.2 0 2.4-.3 3.4-.9C13.4 17.1 11.5 18 9.5 18 4.8 18 1 14.2 1 9.5S4.8 1 9.5 1c1.1 0 2.1.2 3 .6L12 2.5z"
+      stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+    <circle cx="14" cy="4" r="1.2" fill="currentColor" opacity="0.6"/>
+  </svg>
+)
+
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
-      { id: 'journal',  label: 'Journal',   icon: I.journal  },
-      { id: 'social',   label: 'Community', icon: I.social   },
+      { id: 'journal',  label: 'Journal',        icon: I.journal  },
+      { id: 'social',   label: 'Community',       icon: I.social   },
+      { id: 'circle',   label: 'Dream Circle',    icon: I_circle   },
     ],
   },
   {
@@ -136,10 +145,21 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Explore & Reflect',
     items: [
-      { id: 'ask',      label: 'Ask Your Dreams',  icon: I.ask       },
+      { id: 'ask',           label: 'Ask Your Dreams',      icon: I.ask       },
+      { id: 'constellation', label: 'Dream Constellation',  icon: (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9"  cy="9"  r="2"   stroke="currentColor" strokeWidth="1.2"/>
+          <circle cx="3"  cy="4"  r="1.2" stroke="currentColor" strokeWidth="1.1"/>
+          <circle cx="15" cy="3"  r="1.2" stroke="currentColor" strokeWidth="1.1"/>
+          <circle cx="15" cy="14" r="1.2" stroke="currentColor" strokeWidth="1.1"/>
+          <circle cx="3"  cy="14" r="1.2" stroke="currentColor" strokeWidth="1.1"/>
+          <line x1="4"  y1="5"  x2="7.5" y2="7.5" stroke="currentColor" strokeWidth="0.9" strokeOpacity="0.6"/>
+          <line x1="14" y1="4"  x2="10.5" y2="7.5" stroke="currentColor" strokeWidth="0.9" strokeOpacity="0.6"/>
+          <line x1="14" y1="13" x2="10.5" y2="10.5" stroke="currentColor" strokeWidth="0.9" strokeOpacity="0.6"/>
+          <line x1="4"  y1="13" x2="7.5" y2="10.5" stroke="currentColor" strokeWidth="0.9" strokeOpacity="0.6"/>
+        </svg>
+      )},
       { id: 'insights', label: 'Insights',         icon: I.insights  },
-      { id: 'digest',   label: "Dreamer's Digest", icon: I.digest    },
-      { id: 'dashboard',label: 'Dashboard',        icon: I.dashboard },
       { id: 'library',  label: 'Library',          icon: I.library   },
     ],
   },

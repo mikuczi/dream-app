@@ -42,23 +42,6 @@ export function RecordingScreen({ onDone, onCancel }: RecordingScreenProps) {
 
       {/* Center content */}
       <div className="recording-center">
-        {isSupported && (
-          <div className="recording-status">
-            {isListening ? (
-              <div className="recording-dots">
-                <div className="recording-dot" />
-                <div className="recording-dot" />
-                <div className="recording-dot" />
-              </div>
-            ) : (
-              <div style={{ height: 14 }} />
-            )}
-            <span className="recording-status-text">
-              {isListening ? 'listening…' : 'paused'}
-            </span>
-          </div>
-        )}
-
         {!isSupported ? (
           <p className="recording-unsupported">
             Voice recognition is not supported in this browser.<br /><br />
@@ -67,7 +50,6 @@ export function RecordingScreen({ onDone, onCancel }: RecordingScreenProps) {
         ) : !hasContent ? (
           <div className="recording-placeholder-wrap">
             <p className="recording-placeholder">Record your dream.</p>
-            <p className="recording-cta-hint">Speak now — we're listening</p>
           </div>
         ) : (
           <p className="recording-transcript-text">
@@ -78,6 +60,23 @@ export function RecordingScreen({ onDone, onCancel }: RecordingScreenProps) {
               </span>
             )}
           </p>
+        )}
+
+        {isSupported && (
+          <div className="recording-status">
+            {isListening ? (
+              <div className="recording-dots">
+                <div className="recording-dot" />
+                <div className="recording-dot" />
+                <div className="recording-dot" />
+              </div>
+            ) : (
+              <div style={{ height: 5 }} />
+            )}
+            <span className="recording-status-text">
+              {isListening ? 'listening…' : 'paused'}
+            </span>
+          </div>
         )}
       </div>
 

@@ -2,7 +2,7 @@ import './BottomBar.css'
 
 export type ActiveView = 'journal' | 'gallery' | 'symbols' | 'characters' | 'places'
   | 'collections' | 'dashboard' | 'digest' | 'drafts' | 'bookmarks'
-  | 'insights' | 'ask' | 'library' | 'social' | 'me'
+  | 'insights' | 'ask' | 'library' | 'social' | 'me' | 'circle' | 'constellation'
 
 interface BottomBarProps {
   onMenu: () => void

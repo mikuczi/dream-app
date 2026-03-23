@@ -1,4 +1,5 @@
 export type DreamMood = 'peaceful' | 'joyful' | 'anxious' | 'scary' | 'strange'
+export type DreamVisibility = 'private' | 'circle' | 'public'
 
 export interface Dream {
   id: string
@@ -13,7 +14,8 @@ export interface Dream {
   recurring: boolean
   tags: string[]
   sleepQuality: number    // 1–5
-  isPrivate?: boolean     // default false = public
+  isPrivate?: boolean     // legacy — use visibility instead
+  visibility?: DreamVisibility  // 'private' | 'circle' | 'public'
   interpretations?: DreamInterpretation[]
   comments?: Comment[]
   bookmarked?: boolean
@@ -21,7 +23,7 @@ export interface Dream {
 
 export interface DreamInterpretation {
   id: string
-  framework: 'jungian' | 'freudian' | 'symbolic' | 'narrative' | 'psychological'
+  framework: 'jungian' | 'freudian' | 'symbolic' | 'narrative' | 'neuroscience'
   text: string
   createdAt: string
 }

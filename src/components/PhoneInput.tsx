@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import './PhoneInput.css'
 
 export interface Country {
@@ -113,7 +114,7 @@ export function PhoneInput({ value, dialCode, onChange }: PhoneInputProps) {
         />
       </div>
 
-      {open && (
+      {open && createPortal(
         <div className="phone-picker-overlay" onClick={() => setOpen(false)}>
           <div className="phone-picker-sheet" onClick={e => e.stopPropagation()}>
             <div className="phone-picker-header">
@@ -144,7 +145,8 @@ export function PhoneInput({ value, dialCode, onChange }: PhoneInputProps) {
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

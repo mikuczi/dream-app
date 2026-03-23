@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import './DreamDetailScreen.css'
-import type { Dream, DreamMood, DreamInterpretation } from '../types/dream'
+import type { Dream, DreamMood, DreamInterpretation, DreamVisibility } from '../types/dream'
 import { DREAM_SYMBOLS } from '../data/symbols'
 
 interface DreamDetailScreenProps {
   dream: Dream
   onBack: () => void
-  onTogglePrivacy: (id: string) => void
+  onSetVisibility: (id: string, v: DreamVisibility) => void
   onDelete: (id: string) => void
   onBookmark?: (id: string) => void
+  onShareToStory?: (dream: Dream) => void
+  onShareToCircle?: (dream: Dream) => void
+  hasCircle?: boolean
 }
 
 type DreamTab = 'dream' | 'interpretations' | 'tags' | 'map'
@@ -18,15 +21,15 @@ const MOOD_SYMBOLS: Record<DreamMood, string> = {
 }
 
 const FRAMEWORKS: DreamInterpretation['framework'][] = [
-  'jungian', 'freudian', 'symbolic',
+  'jungian', 'freudian', 'symbolic', 'neuroscience', 'narrative',
 ]
 
 const FRAMEWORK_LABELS: Record<DreamInterpretation['framework'], string> = {
-  jungian:        'Jungian',
-  freudian:       'Freudian',
-  symbolic:       'Symbolic',
-  narrative:      'Narrative',
-  psychological:  'Psychological',
+  jungian:      'Jungian',
+  freudian:     'Freudian',
+  symbolic:     'Symbolic',
+  narrative:    'Narrative',
+  neuroscience: 'Neuroscience',
 }
 
 // Gradient artworks per mood — high contrast dark backgrounds
@@ -49,8 +52,10 @@ function generateInterpText(dream: Dream, framework: DreamInterpretation['framew
       return `In Freudian analysis, the imagery of ${tags || 'these elements'} may represent unconscious desires or unresolved tensions from early experiences. The ${mood} quality of the dream could reflect the interplay between the id's impulses and the superego's constraints, with the ego mediating through symbolic displacement.`
     case 'symbolic':
       return `Symbolically, ${tags || 'the central images'} carry deep archetypal weight across cultures. The ${mood} atmosphere suggests a threshold experience — the dreamer standing between two states of being. Pay attention to recurring symbols as they often form a personal mythology unique to you.`
+    case 'neuroscience':
+      return `From a neuroscientific perspective, this dream may reflect memory consolidation and emotional regulation during REM sleep. The ${mood} tone suggests your brain's threat-detection systems (amygdala) and prefrontal cortex were in active dialogue. Recurring themes like ${tags || 'these'} often indicate unresolved neural patterns seeking resolution.`
     default:
-      return `This dream reflects a meaningful inner narrative. The ${mood} quality and the presence of ${tags || 'key elements'} point toward themes your psyche is actively processing during this period.`
+      return `Narratively, this dream reads as a story your mind is constructing from fragments of waking experience. The ${mood} quality shapes the arc — from setting to conflict to resolution. The presence of ${tags || 'key elements'} suggests emotional themes your psyche is actively exploring.`
   }
 }
 
@@ -59,7 +64,13 @@ function formatDateShort(isoString: string): string {
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
 }
 
-export function DreamDetailScreen({ dream, onBack, onTogglePrivacy, onDelete, onBookmark }: DreamDetailScreenProps) {
+const VIS_LABELS: Record<DreamVisibility, { label: string; icon: string }> = {
+  private: { label: 'Private',      icon: '◎' },
+  circle:  { label: 'Dream Circle', icon: '◈' },
+  public:  { label: 'Public',       icon: '◯' },
+}
+
+export function DreamDetailScreen({ dream, onBack, onSetVisibility, onDelete, onBookmark, onShareToStory, onShareToCircle, hasCircle }: DreamDetailScreenProps) {
   const [tab,           setTab]           = useState<DreamTab>('dream')
   const [interpretations, setInterpretations] = useState<DreamInterpretation[]>(dream.interpretations ?? [])
   const [interpreting,  setInterpreting]  = useState(false)
@@ -69,6 +80,8 @@ export function DreamDetailScreen({ dream, onBack, onTogglePrivacy, onDelete, on
   const [notes,         setNotes]         = useState(dream.notes ?? '')
   const [showMenu,      setShowMenu]      = useState(false)
   const [storyShared,   setStoryShared]   = useState(false)
+  const [circleShared,  setCircleShared]  = useState(false)
+  const currentVisibility: DreamVisibility = dream.visibility ?? (dream.isPrivate ? 'private' : 'public')
 
   const transcriptLower = dream.transcript.toLowerCase()
   const matchedSymbols  = DREAM_SYMBOLS.filter(sym => {
@@ -142,15 +155,33 @@ export function DreamDetailScreen({ dream, onBack, onTogglePrivacy, onDelete, on
         <>
           <div className="dd-menu-scrim" onClick={() => setShowMenu(false)} />
           <div className="dd-menu">
-            <button className="dd-menu-item" onClick={() => { setShowMenu(false); setStoryShared(true); setTimeout(() => setStoryShared(false), 2500) }}>
+            <button className="dd-menu-item" onClick={() => { setShowMenu(false); onShareToStory?.(dream); setStoryShared(true); setTimeout(() => setStoryShared(false), 2500) }}>
               ◈ Share to my story
             </button>
+            {hasCircle && (
+              <button className="dd-menu-item" onClick={() => { setShowMenu(false); onShareToCircle?.(dream); setCircleShared(true); setTimeout(() => setCircleShared(false), 2500) }}>
+                ◉ Share to Dream Circle
+              </button>
+            )}
             <button className="dd-menu-item" onClick={() => { onBookmark?.(dream.id); setShowMenu(false) }}>
               {dream.bookmarked ? '◆ Remove bookmark' : '◇ Bookmark dream'}
             </button>
-            <button className="dd-menu-item" onClick={() => { onTogglePrivacy(dream.id); setShowMenu(false) }}>
-              {dream.isPrivate ? '◯ Make public' : '◎ Make private'}
-            </button>
+            {/* Visibility picker */}
+            <div className="dd-vis-section">
+              <span className="dd-vis-label">Visibility</span>
+              <div className="dd-vis-row">
+                {(['private', 'circle', 'public'] as DreamVisibility[]).map(v => (
+                  <button
+                    key={v}
+                    className={`dd-vis-btn ${currentVisibility === v ? 'active' : ''}`}
+                    onClick={() => { onSetVisibility(dream.id, v); setShowMenu(false) }}
+                  >
+                    <span className="dd-vis-icon">{VIS_LABELS[v].icon}</span>
+                    <span>{VIS_LABELS[v].label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -275,8 +306,8 @@ export function DreamDetailScreen({ dream, onBack, onTogglePrivacy, onDelete, on
                   disabled={interpreting}
                 >
                   {interpreting
-                    ? 'Interpreting…'
-                    : <>INTERPRET <span className="dd-interpret-star">✦</span></>
+                    ? 'Reading your dream…'
+                    : <>Explore meanings <span className="dd-interpret-star">✦</span></>
                   }
                 </button>
               </div>
@@ -350,9 +381,9 @@ export function DreamDetailScreen({ dream, onBack, onTogglePrivacy, onDelete, on
               <p className="dd-map-label">Share to global dream map</p>
               <button
                 className="dd-map-btn"
-                onClick={() => onTogglePrivacy(dream.id)}
+                onClick={() => onSetVisibility(dream.id, currentVisibility === 'public' ? 'private' : 'public')}
               >
-                {dream.isPrivate ? 'Make sharable' : 'Shared ✓'}
+                {currentVisibility === 'public' ? 'Shared ✓' : 'Make sharable'}
               </button>
             </div>
           </div>
@@ -361,8 +392,19 @@ export function DreamDetailScreen({ dream, onBack, onTogglePrivacy, onDelete, on
       </div>{/* dd-scroll-card */}
       </div>{/* dd-scroll */}
 
+      {/* Visibility badge */}
+      {currentVisibility === 'circle' && (
+        <div className="dd-vis-badge">◉ Dream Circle</div>
+      )}
+      {currentVisibility === 'private' && (
+        <div className="dd-vis-badge dd-vis-badge-private">◎ Private</div>
+      )}
+
       {storyShared && (
         <div className="dd-toast">Added to your story ✓</div>
+      )}
+      {circleShared && (
+        <div className="dd-toast dd-toast-circle">Shared with your circle ◉</div>
       )}
     </div>
   )

@@ -315,7 +315,6 @@
 /* Excerpt */
 .dream-card-excerpt {
   font-family: var(--font-display);
-  font-style: italic;
   font-size: 13px;
   line-height: 1.55;
   color: var(--text-secondary);

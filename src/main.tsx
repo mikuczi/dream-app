@@ -32,7 +32,7 @@ function scheduleDreamReminder() {
     setTimeout(() => {
       new Notification('Dream Journal ✦', {
         body: 'Did you dream last night? Capture it before it fades.',
-        icon: '/icon-192.png',
+        icon: '/pwa-192x192.png',
         tag: 'dream-reminder',
       })
       localStorage.setItem('dj_notif_last', today)

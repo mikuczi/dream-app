@@ -9,12 +9,11 @@ interface LoginScreenProps {
 
 export function LoginScreen({ onContinue, onGoogleSignIn, googleConfigured }: LoginScreenProps) {
   const [name, setName] = useState('')
-  const [dob, setDob] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (name.trim()) onContinue(name.trim(), dob)
+    if (name.trim()) onContinue(name.trim(), '')
   }
 
   async function handleGoogleSignIn() {
@@ -26,9 +25,25 @@ export function LoginScreen({ onContinue, onGoogleSignIn, googleConfigured }: Lo
 
   return (
     <div className="login-screen">
+      <div className="login-bg">
+        <div className="login-glow" />
+        <div className="login-star ls1" /><div className="login-star ls2" />
+        <div className="login-star ls3" /><div className="login-star ls4" />
+        <div className="login-star ls5" /><div className="login-star ls6" />
+        <div className="login-star ls7" /><div className="login-star ls8" />
+      </div>
       <div className="login-top">
+        <div className="login-moon-wrap">
+          <svg className="login-moon" viewBox="0 0 80 80" fill="none">
+            <path d="M52 10C38 10 27 21 27 35s11 25 25 25c4 0 7.8-.9 11.2-2.5C58.4 62.6 50.7 68 42 68 27.6 68 16 56.4 16 42S27.6 16 42 16c3.7 0 7.2.8 10.4 2.2.2-.7.3-1.4.4-2.1L52 10z"
+              fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+            <circle cx="56" cy="20" r="1.5" fill="rgba(255,255,255,0.6)"/>
+            <circle cx="62" cy="30" r="1" fill="rgba(255,255,255,0.4)"/>
+            <circle cx="50" cy="14" r="1" fill="rgba(255,255,255,0.5)"/>
+          </svg>
+        </div>
         <h1 className="login-wordmark">reverie</h1>
-        <p className="login-tagline">Your dream journal</p>
+        <p className="login-tagline">speak with your dreams</p>
       </div>
 
       {/* Google SSO — shown when Firebase is configured */}
@@ -64,20 +79,6 @@ export function LoginScreen({ onContinue, onGoogleSignIn, googleConfigured }: Lo
             placeholder="How should we call you?"
             autoFocus
             autoComplete="given-name"
-          />
-        </div>
-
-        <div className="login-field">
-          <label className="login-label" htmlFor="login-dob">
-            Date of birth
-            <span className="login-label-note"> — for your natal chart</span>
-          </label>
-          <input
-            id="login-dob"
-            className="login-input login-input-date"
-            type="date"
-            value={dob}
-            onChange={e => setDob(e.target.value)}
           />
         </div>
 

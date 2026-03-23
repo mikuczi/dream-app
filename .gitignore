@@ -3,5 +3,8 @@ dist/
 .env
 *.local
 backend/dreams.json
+backend/users.json
 backend/node_modules/
 .DS_Store
+.vercel
+.netlify/
