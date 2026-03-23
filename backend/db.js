@@ -8,6 +8,7 @@ import { db } from './firebase-admin.js'
 const COLLECTION = 'dreams'
 
 export async function createDream({ transcript, whatsappFrom, userId, analysisPromise }) {
+  if (!db) throw new Error('Firestore not configured — set Firebase env vars')
   const dream = {
     id:           randomUUID(),
     title:        'WhatsApp Voice Note',
@@ -40,6 +41,7 @@ export async function createDream({ transcript, whatsappFrom, userId, analysisPr
 }
 
 export async function getAllDreams() {
+  if (!db) return []
   const snap = await db.collection(COLLECTION).orderBy('createdAt', 'desc').get()
   return snap.docs.map(d => d.data())
 }
