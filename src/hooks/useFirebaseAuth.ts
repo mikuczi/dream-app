@@ -35,18 +35,20 @@ export function useFirebaseAuth(): FirebaseAuthState {
   }, [])
 
   async function signIn() {
-    if (!auth) return
+    if (!auth) {
+      console.error('[Auth] auth is null — Firebase env vars not loaded')
+      return
+    }
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
     try {
-      // Popup works on all browsers when triggered by a user gesture (tap/click)
       await signInWithPopup(auth, provider)
     } catch (err: any) {
-      // Only fall back to redirect if the popup was explicitly blocked
+      console.error('[Auth] signInWithPopup error:', err?.code, err?.message)
       if (err?.code === 'auth/popup-blocked') {
         await signInWithRedirect(auth, provider)
       }
-      // auth/popup-closed-by-user — user dismissed, do nothing (rethrow nothing)
+      // auth/popup-closed-by-user — user dismissed, do nothing
     }
   }
 
