@@ -35,16 +35,12 @@ export function useFirebaseAuth(): FirebaseAuthState {
   }, [])
 
   async function signIn() {
-    if (!auth) {
-      console.error('[Auth] auth is null — Firebase env vars not loaded')
-      return
-    }
+    if (!auth) return
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
     try {
       await signInWithPopup(auth, provider)
     } catch (err: any) {
-      console.error('[Auth] signInWithPopup error:', err?.code, err?.message)
       if (err?.code === 'auth/popup-blocked') {
         await signInWithRedirect(auth, provider)
       }
