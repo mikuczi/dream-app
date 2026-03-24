@@ -1,0 +1,267 @@
+.sds-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: flex-end;
+  z-index: 250;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: screenFadeIn 0.15s ease;
+}
+
+.sds-sheet {
+  width: 100%;
+  background: #1a1825;
+  border-radius: 24px 24px 0 0;
+  border-top: 1px solid var(--border);
+  padding: 12px 20px max(36px, env(safe-area-inset-bottom, 36px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 92vh;
+  overflow-y: auto;
+  position: relative;
+  animation: slideUp 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.sds-sheet::-webkit-scrollbar { display: none; }
+
+.sds-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  align-self: center;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.sds-close {
+  position: absolute;
+  top: 22px;
+  right: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+.sds-close:active { background: rgba(255, 255, 255, 0.14); }
+
+/* ── Header ────────────────────────────────────────────── */
+.sds-header {
+  padding-right: 40px;
+  margin-bottom: 4px;
+}
+
+.sds-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+
+.sds-subtitle {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ── Community card ────────────────────────────────────── */
+.sds-community-card {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.sds-community-card.selected {
+  border-color: rgba(155, 140, 255, 0.4);
+  background: rgba(155, 140, 255, 0.06);
+}
+
+.sds-community-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.sds-community-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sds-community-name {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sds-community-desc {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.sds-radio {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.sds-radio.active {
+  border-color: #9B8CFF;
+}
+
+.sds-radio.active::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: #9B8CFF;
+}
+
+/* ── Friends card ──────────────────────────────────────── */
+.sds-friends-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+/* Abstract illustration */
+.sds-friends-illustration {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.sds-friends-art {
+  width: 80px;
+  height: 80px;
+  position: relative;
+}
+
+.sds-art-body {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(155, 140, 255, 0.25), rgba(100, 80, 180, 0.15));
+  border: 1px solid rgba(155, 140, 255, 0.2);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.sds-art-arm {
+  width: 42px;
+  height: 28px;
+  border-radius: 100px;
+  background: linear-gradient(135deg, rgba(200, 160, 80, 0.3), rgba(180, 120, 40, 0.2));
+  border: 1px solid rgba(200, 160, 80, 0.2);
+  position: absolute;
+  bottom: 8px;
+  right: 2px;
+  transform: rotate(-30deg);
+}
+
+.sds-friends-empty {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.sds-friends-cta {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.sds-add-friends-btn {
+  width: 100%;
+  height: 46px;
+  border: 1px solid var(--border-strong);
+  border-radius: 100px;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: transparent;
+  margin-top: 4px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+.sds-add-friends-btn:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Share button ──────────────────────────────────────── */
+.sds-share-btn {
+  width: 100%;
+  height: 54px;
+  background: #1e1c2e;
+  border: 1px solid rgba(155, 140, 255, 0.25);
+  border-radius: 100px;
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+  margin-top: 4px;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.sds-share-btn:active:not(:disabled) {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.sds-share-btn.shared {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.3);
+  color: #4ade80;
+}

@@ -14,6 +14,35 @@ interface MeScreenProps {
   onSettings?: () => void
   onPaywall?: () => void
   badgeFlags?: BadgeFlags
+  todayRecordings?: number
+  dailyLimit?: number
+}
+
+function exportDreams(dreams: Dream[], userName?: string) {
+  const data = {
+    exportedAt: new Date().toISOString(),
+    user: userName ?? 'Dreamer',
+    totalDreams: dreams.length,
+    dreams: dreams.map(d => ({
+      date: d.createdAt,
+      title: d.title,
+      transcript: d.transcript,
+      mood: d.mood,
+      tags: d.tags,
+      lucid: d.lucid,
+      recurring: d.recurring,
+      clarity: d.clarity,
+      visibility: d.visibility,
+      notes: d.notes ?? '',
+    })),
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `reverie-dreams-${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 function getInitials(name: string) {
@@ -37,7 +66,7 @@ function calculateStreak(dreams: Dream[]) {
   return streak
 }
 
-export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onRecord, onSettings, onPaywall, badgeFlags }: MeScreenProps) {
+export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onRecord, onSettings, onPaywall, badgeFlags, todayRecordings = 0, dailyLimit = 3 }: MeScreenProps) {
 
   // Guest
   if (!user) {
@@ -163,6 +192,29 @@ export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onReco
           </div>
         </div>
 
+        {/* ── Daily recording limit ──────────────────────── */}
+        <div className="me-section">
+          <p className="me-section-label">Today's recordings</p>
+          <div className="me-limit-bar-wrap">
+            <div className="me-limit-bar">
+              <div
+                className="me-limit-bar-fill"
+                style={{ width: `${Math.min(todayRecordings / dailyLimit, 1) * 100}%` }}
+                data-full={todayRecordings >= dailyLimit}
+              />
+            </div>
+            <span className="me-limit-text">
+              {todayRecordings} / {dailyLimit} free
+              {todayRecordings >= dailyLimit ? ' — limit reached' : ''}
+            </span>
+          </div>
+          {todayRecordings >= dailyLimit && onPaywall && (
+            <button className="me-limit-upgrade-btn" onClick={onPaywall}>
+              Upgrade for unlimited →
+            </button>
+          )}
+        </div>
+
         {/* ── Paywall CTA ─────────────────────────────────── */}
         {onPaywall && (
           <div className="me-section">
@@ -212,6 +264,10 @@ export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onReco
           )}
           <button className="me-row-btn" onClick={onWhatsApp}>
             <span className="me-row-label">💬 Log via WhatsApp</span>
+            <span className="me-row-chevron">›</span>
+          </button>
+          <button className="me-row-btn" onClick={() => exportDreams(dreams, user?.name)}>
+            <span className="me-row-label">↓ Export my dreams</span>
             <span className="me-row-chevron">›</span>
           </button>
           <button className="me-row-btn me-row-destructive" onClick={onSignOut}>

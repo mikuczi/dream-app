@@ -6,6 +6,7 @@ import { saveUserProfile, saveFeedPost } from './lib/firestore'
 import { analyzeConnections } from './utils/dreamConnections'
 
 import { PaywallScreen }         from './screens/PaywallScreen'
+import { DailyLimitPaywall }    from './screens/DailyLimitPaywall'
 import { LoginScreen }          from './screens/LoginScreen'
 import { OnboardingScreen }     from './screens/OnboardingScreen'
 import { RecordingScreen }      from './screens/RecordingScreen'
@@ -39,10 +40,30 @@ import type { Dream, User, DreamVisibility } from './types/dream'
 import { getEarnedBadgeIds, BADGES, type BadgeFlags } from './data/badges'
 import { STORY_DREAMS, COMMUNITY_USERS } from './data/mockCommunity'
 
-const KEY_USER       = 'dj_user'
-const KEY_ONBOARDED  = 'dj_onboarded'
-const KEY_SEEN_BADGES = 'dj_seen_badges'
-const KEY_CHECKIN_DATE = 'dj_checkin_date'
+const KEY_USER              = 'dj_user'
+const KEY_ONBOARDED         = 'dj_onboarded'
+const KEY_SEEN_BADGES       = 'dj_seen_badges'
+const KEY_CHECKIN_DATE      = 'dj_checkin_date'
+const KEY_DAILY_RECORDINGS  = 'dj_daily_recordings'
+const FREE_DAILY_LIMIT      = 3
+
+function getTodayRecordings(): { date: string; count: number } {
+  try {
+    const raw = localStorage.getItem(KEY_DAILY_RECORDINGS)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed.date === new Date().toDateString()) return parsed
+    }
+  } catch { /* ignore */ }
+  return { date: new Date().toDateString(), count: 0 }
+}
+
+function incrementTodayRecordings(): number {
+  const current = getTodayRecordings()
+  const updated = { date: current.date, count: current.count + 1 }
+  localStorage.setItem(KEY_DAILY_RECORDINGS, JSON.stringify(updated))
+  return updated.count
+}
 
 function loadUser(): User | null {
   try { return JSON.parse(localStorage.getItem(KEY_USER) ?? 'null') }
@@ -76,6 +97,7 @@ export function App() {
   const [circle,            setCircle]            = useState<DreamCircle>({ name: 'Inner Circle', color: '#9B8CFF', memberIds: [] })
   const [badgeFlags,        setBadgeFlags]        = useState<BadgeFlags>({ viewedConstellation: false, createdCircle: false })
   const [paywallOpen,       setPaywallOpen]       = useState(false)
+  const [dailyLimitOpen,    setDailyLimitOpen]    = useState(false)
   const [checkInOpen,       setCheckInOpen]       = useState(false)
   const [newBadge,          setNewBadge]          = useState<{ name: string; icon: string } | null>(null)
   const seenBadgeIds = useRef<Set<string>>(new Set(JSON.parse(localStorage.getItem(KEY_SEEN_BADGES) ?? '[]')))
@@ -201,6 +223,15 @@ export function App() {
   }
 
   // ── Recording ─────────────────────────────────────────
+  function openRecording() {
+    const { count } = getTodayRecordings()
+    if (count >= FREE_DAILY_LIMIT) {
+      setDailyLimitOpen(true)
+    } else {
+      setOverlay('recording')
+    }
+  }
+
   function handleRecordingDone(transcript: string) {
     setPendingTranscript(transcript)
     setOverlay('log')
@@ -208,6 +239,7 @@ export function App() {
 
   function handleLogSave(dream: Dream) {
     addDream(dream)
+    incrementTodayRecordings()
     setOverlay(null)
 
     // Add to story if flagged or if it's the user's first dream
@@ -340,7 +372,7 @@ export function App() {
           />
         )}
         {activeView === 'library'     && <LibraryScreen />}
-        {activeView === 'social'      && <SocialScreen onOpenStory={idx => setStoryIndex(idx)} onAddStory={() => setOverlay('recording')} myName={user?.name} myStories={myStories} dreams={dreams} circle={circle} onManageCircle={() => setActiveView('circle')} />}
+        {activeView === 'social'      && <SocialScreen onOpenStory={idx => setStoryIndex(idx)} onAddStory={openRecording} myName={user?.name} myStories={myStories} dreams={dreams} circle={circle} onManageCircle={() => setActiveView('circle')} />}
         {activeView === 'circle'      && <DreamCircleScreen circle={circle} dreams={dreams} myName={user?.name} onUpdate={c => { setCircle(c); if (c.memberIds.length > 0) setBadgeFlags(f => ({ ...f, createdCircle: true })) }} onBack={() => setActiveView('social')} />}
         {activeView === 'me'          && (
           <MeScreen
@@ -349,17 +381,19 @@ export function App() {
             onSignOut={handleSignOut}
             onWhatsApp={() => setOverlay('whatsapp')}
             onSignIn={() => setAppState('login')}
-            onRecord={() => setOverlay('recording')}
+            onRecord={openRecording}
             onSettings={() => setOverlay('settings')}
             onPaywall={() => setPaywallOpen(true)}
             badgeFlags={badgeFlags}
+            todayRecordings={getTodayRecordings().count}
+            dailyLimit={FREE_DAILY_LIMIT}
           />
         )}
       </div>
 
       <BottomBar
         onMenu={() => setDrawerOpen(true)}
-        onAdd={() => setOverlay('recording')}
+        onAdd={openRecording}
         onSocial={() => setActiveView('social')}
         onHome={() => setActiveView('journal')}
         onProfile={() => setActiveView('me')}
@@ -506,7 +540,7 @@ export function App() {
               <button className="app-checkin-yes" onClick={() => {
                 setCheckInOpen(false)
                 localStorage.setItem(KEY_CHECKIN_DATE, new Date().toDateString())
-                setOverlay('recording')
+                openRecording()
               }}>
                 Yes, log it →
               </button>
@@ -524,6 +558,14 @@ export function App() {
       {/* ── Paywall ───────────────────────────────────── */}
       {paywallOpen && (
         <PaywallScreen onClose={() => setPaywallOpen(false)} />
+      )}
+
+      {/* ── Daily limit paywall ───────────────────────── */}
+      {dailyLimitOpen && (
+        <DailyLimitPaywall
+          usedToday={getTodayRecordings().count}
+          onClose={() => setDailyLimitOpen(false)}
+        />
       )}
     </div>
   )

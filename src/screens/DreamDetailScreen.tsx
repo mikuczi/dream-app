@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './DreamDetailScreen.css'
 import type { Dream, DreamMood, DreamInterpretation, DreamVisibility } from '../types/dream'
 import { DREAM_SYMBOLS } from '../data/symbols'
+import { ShareDreamSheet } from './ShareDreamSheet'
 
 interface DreamDetailScreenProps {
   dream: Dream
@@ -70,7 +71,7 @@ const VIS_LABELS: Record<DreamVisibility, { label: string; icon: string }> = {
   public:  { label: 'Public',       icon: '◯' },
 }
 
-export function DreamDetailScreen({ dream, onBack, onSetVisibility, onDelete, onBookmark, onShareToStory, onShareToCircle, hasCircle }: DreamDetailScreenProps) {
+export function DreamDetailScreen({ dream, onBack, onSetVisibility, onDelete, onBookmark, onShareToStory }: DreamDetailScreenProps) {
   const [tab,           setTab]           = useState<DreamTab>('dream')
   const [interpretations, setInterpretations] = useState<DreamInterpretation[]>(dream.interpretations ?? [])
   const [interpreting,  setInterpreting]  = useState(false)
@@ -79,8 +80,8 @@ export function DreamDetailScreen({ dream, onBack, onSetVisibility, onDelete, on
   const [localComments, setLocalComments] = useState(dream.comments ?? [])
   const [notes,         setNotes]         = useState(dream.notes ?? '')
   const [showMenu,      setShowMenu]      = useState(false)
+  const [showShare,     setShowShare]     = useState(false)
   const [storyShared,   setStoryShared]   = useState(false)
-  const [circleShared,  setCircleShared]  = useState(false)
   const currentVisibility: DreamVisibility = dream.visibility ?? (dream.isPrivate ? 'private' : 'public')
 
   const transcriptLower = dream.transcript.toLowerCase()
@@ -155,14 +156,9 @@ export function DreamDetailScreen({ dream, onBack, onSetVisibility, onDelete, on
         <>
           <div className="dd-menu-scrim" onClick={() => setShowMenu(false)} />
           <div className="dd-menu">
-            <button className="dd-menu-item" onClick={() => { setShowMenu(false); onShareToStory?.(dream); setStoryShared(true); setTimeout(() => setStoryShared(false), 2500) }}>
-              ◈ Share to my story
+            <button className="dd-menu-item" onClick={() => { setShowMenu(false); setShowShare(true) }}>
+              ◈ Share dream…
             </button>
-            {hasCircle && (
-              <button className="dd-menu-item" onClick={() => { setShowMenu(false); onShareToCircle?.(dream); setCircleShared(true); setTimeout(() => setCircleShared(false), 2500) }}>
-                ◉ Share to Dream Circle
-              </button>
-            )}
             <button className="dd-menu-item" onClick={() => { onBookmark?.(dream.id); setShowMenu(false) }}>
               {dream.bookmarked ? '◆ Remove bookmark' : '◇ Bookmark dream'}
             </button>
@@ -403,8 +399,14 @@ export function DreamDetailScreen({ dream, onBack, onSetVisibility, onDelete, on
       {storyShared && (
         <div className="dd-toast">Added to your story ✓</div>
       )}
-      {circleShared && (
-        <div className="dd-toast dd-toast-circle">Shared with your circle ◉</div>
+
+
+      {showShare && (
+        <ShareDreamSheet
+          dream={dream}
+          onClose={() => setShowShare(false)}
+          onShareToStory={d => { onShareToStory?.(d); setStoryShared(true); setTimeout(() => setStoryShared(false), 2500) }}
+        />
       )}
     </div>
   )
