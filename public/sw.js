@@ -1,6 +1,6 @@
 // ── reverie Service Worker ──────────────────────────────────
-const CACHE_SHELL   = 'reverie-shell-v1'
-const CACHE_IMAGES  = 'reverie-images-v1'
+const CACHE_SHELL   = 'reverie-shell-v2'
+const CACHE_IMAGES  = 'reverie-images-v2'
 
 const SHELL_URLS = ['/', '/index.html']
 
@@ -51,7 +51,8 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       fetch(request)
         .then(res => {
-          caches.open(CACHE_SHELL).then(c => c.put(request, res.clone()))
+          const clone = res.clone()
+          caches.open(CACHE_SHELL).then(c => c.put(request, clone))
           return res
         })
         .catch(() => caches.match('/') )
