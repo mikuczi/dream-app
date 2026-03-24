@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useDreams } from './hooks/useDreams'
 import { getZodiacSign } from './utils/astro'
 import { useFirebaseAuth } from './hooks/useFirebaseAuth'
-import { saveUserProfile } from './lib/firestore'
+import { saveUserProfile, saveFeedPost } from './lib/firestore'
 import { analyzeConnections } from './utils/dreamConnections'
 
 import { PaywallScreen }         from './screens/PaywallScreen'
@@ -152,8 +152,8 @@ export function App() {
       const merged: User = {
         id:           fbUser.uid,
         name:         fbUser.displayName ?? existing?.name ?? 'Dreamer',
+        username:     existing?.username ?? fbUser.email?.split('@')[0] ?? fbUser.uid.slice(0, 8),
         email:        fbUser.email ?? '',
-        passwordHash: '',
         dob:          existing?.dob ?? '',
         zodiacSign:   existing?.zodiacSign ?? (existing?.dob ? getZodiacSign(existing.dob).sign : 'pisces'),
         createdAt:    existing?.createdAt ?? new Date().toISOString(),
@@ -209,13 +209,40 @@ export function App() {
   function handleLogSave(dream: Dream) {
     addDream(dream)
     setOverlay(null)
-    // Auto-post confirmation toast
-    setSaveToast('Dream saved & added to your story ✓')
+
+    // Add to story if flagged or if it's the user's first dream
+    const isFirst = dreams.length === 0
+    if (dream.inStory || isFirst) {
+      setMyStories(prev => [dream, ...prev.filter(d => d.id !== dream.id)])
+    }
+
+    // Mirror to feed collection if shared
+    if (dream.inFeed && dream.visibility !== 'private' && fbUser) {
+      saveFeedPost({
+        id: dream.id,
+        authorId: fbUser.uid,
+        authorName: fbUser.displayName ?? user?.name ?? 'Dreamer',
+        authorPhoto: fbUser.photoURL ?? undefined,
+        dreamId: dream.id,
+        title: dream.title,
+        transcript: dream.transcript,
+        mood: dream.mood,
+        tags: dream.tags,
+        visibility: dream.visibility as 'circle' | 'public',
+        circleId: dream.circleId,
+        inStory: dream.inStory,
+        createdAt: dream.createdAt,
+      }).catch(() => {})
+    }
+
+    const toastMsg = dream.inStory
+      ? 'Dream saved & added to your story ✓'
+      : 'Dream saved to your journal ✓'
+    setSaveToast(toastMsg)
     setTimeout(() => setSaveToast(''), 3000)
-    // Add in-app notification
     setNotifications(prev => [{
       id: Date.now().toString(),
-      text: `"${dream.title}" was added to your story`,
+      text: `"${dream.title}" was saved${dream.inStory ? ' & added to your story' : ''}`,
       time: 'Just now',
       read: false,
     }, ...prev])

@@ -15,7 +15,10 @@ export interface Dream {
   tags: string[]
   sleepQuality: number    // 1–5
   isPrivate?: boolean     // legacy — use visibility instead
-  visibility?: DreamVisibility  // 'private' | 'circle' | 'public'
+  visibility: DreamVisibility   // 'private' | 'circle' | 'public'
+  circleId?: string             // which circle, when visibility === 'circle'
+  inStory: boolean              // added to dream story (24h visible)
+  inFeed: boolean               // mirrored to social feed
   interpretations?: DreamInterpretation[]
   comments?: Comment[]
   bookmarked?: boolean
@@ -54,12 +57,66 @@ export type ZodiacSign =
 export interface User {
   id: string
   name: string
+  username: string      // @handle, unique
   email: string
-  passwordHash: string  // base64 for mock
   dob: string           // ISO date string "1990-05-21"
   zodiacSign: ZodiacSign
   createdAt: string
   photoURL?: string
+  whatsAppNumber?: string  // E.164 format e.g. "+447911123456"
+}
+
+// ── Social ────────────────────────────────────────────────
+
+export interface DreamCircle {
+  id: string
+  name: string
+  color: string         // CSS color
+  memberIds: string[]   // Firebase UIDs
+  createdAt: string
+}
+
+// Top-level feed doc (denormalised for social queries)
+export interface FeedPost {
+  id: string            // same as dreamId
+  authorId: string
+  authorName: string
+  authorPhoto?: string
+  dreamId: string
+  title: string
+  transcript: string
+  mood: DreamMood
+  tags: string[]
+  visibility: 'circle' | 'public'
+  circleId?: string
+  inStory: boolean
+  createdAt: string
+}
+
+// ── AI & Analysis ─────────────────────────────────────────
+
+export interface AIChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
+}
+
+export interface DreamPattern {
+  id: string
+  name: string           // e.g. "Water", "Being chased"
+  count: number
+  dreamIds: string[]
+  lastSeen: string       // ISO date
+}
+
+export interface DreamSymbol {
+  id: string
+  name: string
+  occurrences: number
+  dreamIds: string[]
+  firstSeen: string
+  lastSeen: string
 }
 
 export interface MoonPhaseInfo {

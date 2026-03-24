@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import './LogScreen.css'
-import type { Dream, DreamMood } from '../types/dream'
+import type { Dream, DreamMood, DreamVisibility } from '../types/dream'
 
 interface LogScreenProps {
   transcript: string
@@ -122,15 +122,24 @@ function todayISO() {
   return `${d.getFullYear()}-${mm}-${dd}`
 }
 
+const VISIBILITY_OPTIONS: { value: DreamVisibility; label: string; desc: string; icon: string }[] = [
+  { value: 'private', label: 'Only me',  desc: 'Just your journal',        icon: '🔒' },
+  { value: 'circle',  label: 'Circle',   desc: 'Your dream circle only',   icon: '👥' },
+  { value: 'public',  label: 'Public',   desc: 'Anyone can discover it',   icon: '🌍' },
+]
+
 export function LogScreen({ transcript, onSave, onBack }: LogScreenProps) {
-  const [title,    setTitle]    = useState(() => generateTitle(transcript))
-  const [dreamDate, setDreamDate] = useState(todayISO())
-  const [mood,     setMood]     = useState<DreamMood>('peaceful')
-  const [symbols,  setSymbols]  = useState<string[]>(() => detectSymbols(transcript))
-  const [newTag,   setNewTag]   = useState('')
-  const [showMore, setShowMore] = useState(false)
-  const [lucid,    setLucid]    = useState(false)
-  const [recurring, setRecurring] = useState(false)
+  const [title,      setTitle]      = useState(() => generateTitle(transcript))
+  const [dreamDate,  setDreamDate]  = useState(todayISO())
+  const [mood,       setMood]       = useState<DreamMood>('peaceful')
+  const [symbols,    setSymbols]    = useState<string[]>(() => detectSymbols(transcript))
+  const [newTag,     setNewTag]     = useState('')
+  const [showMore,   setShowMore]   = useState(false)
+  const [lucid,      setLucid]      = useState(false)
+  const [recurring,  setRecurring]  = useState(false)
+  const [visibility, setVisibility] = useState<DreamVisibility>('private')
+  const [inStory,    setInStory]    = useState(true)
+  const [inFeed,     setInFeed]     = useState(false)
 
   const summary = generateSummary(transcript)
 
@@ -156,6 +165,9 @@ export function LogScreen({ transcript, onSave, onBack }: LogScreenProps) {
       recurring,
       tags: symbols,
       sleepQuality: 3,
+      visibility,
+      inStory,
+      inFeed: visibility !== 'private' && inFeed,
     }
     onSave(dream)
   }
@@ -278,6 +290,49 @@ export function LogScreen({ transcript, onSave, onBack }: LogScreenProps) {
                 <span className="log-more-label">Recurring</span>
                 <Toggle active={recurring} onToggle={() => setRecurring(v => !v)} />
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Visibility */}
+        <div className="log-section">
+          <div className="log-label">Who can see this?</div>
+          <div className="log-visibility-row">
+            {VISIBILITY_OPTIONS.map(({ value, label, desc, icon }) => (
+              <button
+                key={value}
+                className={`log-vis-card ${visibility === value ? 'selected' : ''}`}
+                onClick={() => {
+                  setVisibility(value)
+                  if (value === 'private') setInFeed(false)
+                }}
+              >
+                <span className="log-vis-icon">{icon}</span>
+                <span className="log-vis-label">{label}</span>
+                <span className="log-vis-desc">{desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Story & Feed toggles */}
+        <div className="log-section log-sharing-section">
+          <div className="log-more-row">
+            <div className="log-toggle-info">
+              <span className="log-more-label">Add to Dream Story</span>
+              <span className="log-more-hint">Visible for 24h like stories</span>
+            </div>
+            <Toggle active={inStory} onToggle={() => setInStory(v => !v)} />
+          </div>
+          {visibility !== 'private' && (
+            <div className="log-more-row">
+              <div className="log-toggle-info">
+                <span className="log-more-label">Share to Feed</span>
+                <span className="log-more-hint">
+                  {visibility === 'circle' ? 'Visible to your circle' : 'Visible to everyone'}
+                </span>
+              </div>
+              <Toggle active={inFeed} onToggle={() => setInFeed(v => !v)} />
             </div>
           )}
         </div>
