@@ -105,7 +105,7 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
     }
 
     if (!fsUser) {
-      setEmailError("No account found with that email. Make sure they've signed in to Reverie.")
+      setEmailError("No account found. Ask them to open the app and sign in once, then try again.")
       return
     }
     if (fsUser.uid === currentUid) {
