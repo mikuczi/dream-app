@@ -129,7 +129,12 @@ export function App() {
 
   // ── Firestore notifications subscription ──────────────
   useEffect(() => {
-    if (!fbUser) return
+    if (!fbUser) {
+      // Clear state when signed out so a new user doesn't see stale data
+      setNotifications([])
+      setFollowingSet(new Set())
+      return
+    }
     return subscribeNotifications(fbUser.uid, (fsNotifs) => {
       setNotifications(prev => {
         const prevIds = new Set(prev.map(n => n.id))
@@ -145,7 +150,7 @@ export function App() {
         return incoming.length ? [...incoming, ...prev] : prev
       })
     })
-  }, [fbUser])
+  }, [fbUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Follow graph subscription ──────────────────────────
   useEffect(() => {
@@ -265,7 +270,7 @@ export function App() {
       setFollowingSet(prev => new Set([...prev, targetUid]))
       followUser(fbUser.uid, user.name, { uid: targetUid, name: targetName, username: targetUsername }).catch(() => {})
       createNotification(targetUid, {
-        id: `follow_${fbUser.uid}_${Date.now()}`,
+        id: `follow_from_${fbUser.uid}`,  // stable ID — overwrites on re-follow
         type: 'follow',
         fromUserId: fbUser.uid,
         fromUserName: user.name,

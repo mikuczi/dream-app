@@ -66,6 +66,8 @@ export async function saveFeedPost(post: FeedPost): Promise<void> {
   await setDoc(doc(db, 'feed', post.id), { ...post, storyExpiresAt, _updatedAt: serverTimestamp() }, { merge: true })
 }
 
+// NOTE: requires Firestore composite index on feed: (inStory ASC, storyExpiresAt ASC)
+// Firestore will log an error with a direct link to create the index on first call.
 export async function fetchActiveStories(count = 20): Promise<FeedPost[]> {
   if (!db) return []
   const q = query(
@@ -385,6 +387,7 @@ export async function fetchCircleMemberships(uid: string): Promise<CircleMembers
 // ── Personalized feed ─────────────────────────────────────
 // Queries feed/ where authorId is in the list of followed UIDs.
 // Firestore 'in' supports up to 30 values per query.
+// NOTE: requires Firestore composite index on feed: (authorId ASC, createdAt DESC)
 
 export async function fetchFollowingFeed(followingUids: string[], count = 30): Promise<FeedPost[]> {
   if (!db || followingUids.length === 0) return []

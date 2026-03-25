@@ -249,7 +249,8 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
                     <div className="feed-card-actions">
                       <button
                         className={`feed-action-btn ${isLiked ? 'active' : ''}`}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           const next = !isLiked
                           setLiked(l => ({ ...l, [dream.id]: next }))
                           if (currentUserId) setLike(dream.id, currentUserId, next).catch(() => {})
@@ -268,14 +269,14 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
                       </button>
                       <button
                         className={`feed-action-btn ${isSaved ? 'active' : ''}`}
-                        onClick={() => setSaved(s => ({ ...s, [dream.id]: !isSaved }))}
+                        onClick={(e) => { e.stopPropagation(); setSaved(s => ({ ...s, [dream.id]: !isSaved })) }}
                       >
                         <svg width="16" height="16" viewBox="0 0 16 16" fill={isSaved ? 'currentColor' : 'none'}>
                           <path d="M3 2h10v12l-5-3-5 3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
                         </svg>
                         <span>{dream.saves + (isSaved ? 1 : 0)}</span>
                       </button>
-                      <button className="feed-action-btn feed-action-share">
+                      <button className="feed-action-btn feed-action-share" onClick={(e) => e.stopPropagation()}>
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                           <path d="M13 2L2 7l4.5 2.5L9 14l4-12z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
