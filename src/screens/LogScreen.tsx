@@ -122,6 +122,17 @@ function todayISO() {
   return `${d.getFullYear()}-${mm}-${dd}`
 }
 
+const DREAM_THUMBNAILS = [
+  '/photos/Dream1.jpg', '/photos/Dream2.jpg', '/photos/Dream3.jpg',
+  '/photos/Dream4.jpg', '/photos/Dream5.jpg', '/photos/Dream6.jpg',
+  '/photos/Dream7.jpg', '/photos/Dream8.jpg',
+  '/photos/dream9.jpg', '/photos/dream10.jpg', '/photos/dream11.jpg',
+]
+
+function pickThumbnail(): string {
+  return DREAM_THUMBNAILS[Math.floor(Math.random() * DREAM_THUMBNAILS.length)]
+}
+
 const VISIBILITY_OPTIONS: { value: DreamVisibility; label: string; desc: string; icon: string }[] = [
   { value: 'private', label: 'Only me',  desc: 'Just your journal',        icon: '🔒' },
   { value: 'circle',  label: 'Circle',   desc: 'Your dream circle only',   icon: '👥' },
@@ -168,6 +179,7 @@ export function LogScreen({ transcript, onSave, onBack }: LogScreenProps) {
       visibility,
       inStory,
       inFeed: visibility !== 'private' && inFeed,
+      thumbnailUrl: pickThumbnail(),
     }
     onSave(dream)
   }

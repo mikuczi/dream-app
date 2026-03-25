@@ -25,13 +25,16 @@ type FeedSort  = 'recent' | 'top'
 type SocialTab = 'community' | 'circle'
 
 export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStories = [], dreams = [], circle, onManageCircle }: SocialScreenProps) {
-  const [viewedSet,  setViewedSet]  = useState<Set<string>>(
+  const [viewedSet,       setViewedSet]       = useState<Set<string>>(
     () => new Set(COMMUNITY_USERS.filter(u => u.viewed).map(u => u.id))
   )
-  const [socialTab,  setSocialTab]  = useState<SocialTab>('community')
-  const [sort,       setSort]       = useState<FeedSort>('recent')
-  const [liked,      setLiked]      = useState<Record<string, boolean>>({})
-  const [saved,      setSaved]      = useState<Record<string, boolean>>({})
+  const [socialTab,       setSocialTab]       = useState<SocialTab>('community')
+  const [sort,            setSort]            = useState<FeedSort>('recent')
+  const [liked,           setLiked]           = useState<Record<string, boolean>>({})
+  const [saved,           setSaved]           = useState<Record<string, boolean>>({})
+  const [focusDream,      setFocusDream]      = useState<CommunityDream | null>(null)
+  const [commentInput,    setCommentInput]    = useState('')
+  const [localComments,   setLocalComments]   = useState<{ text: string; time: string }[]>([])
 
   const storyUsers = COMMUNITY_USERS.filter(u =>
     STORY_DREAMS.some(d => d.userId === u.id)
@@ -187,7 +190,7 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
               const emoji   = moodEmoji[dream.mood] ?? '💭'
 
               return (
-                <div key={dream.id} className="feed-card">
+                <div key={dream.id} className="feed-card" onClick={() => setFocusDream(dream)} style={{ cursor: 'pointer' }}>
                   <div className="feed-card-visual" style={{ background: dream.visual }}>
                     <span className="feed-card-mood">{emoji}</span>
                   </div>
@@ -347,6 +350,101 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
           )}
         </div>
       )}
+
+      {/* ── Full-screen dream overlay ─────────────────────── */}
+      {focusDream && (() => {
+        const isMe   = focusDream.userId === 'me'
+        const fUser  = isMe ? null : COMMUNITY_USERS.find(u => u.id === focusDream.userId)
+        const isLiked = liked[focusDream.id] ?? focusDream.liked
+        const isSaved = saved[focusDream.id] ?? focusDream.saved
+        return (
+          <div className="feed-detail-overlay">
+            <div className="feed-detail-header">
+              <button className="feed-detail-back" onClick={() => { setFocusDream(null); setCommentInput(''); setLocalComments([]) }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M12 4L6 10l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <div className="feed-detail-user" onClick={() => {}}>
+                <div className="feed-card-avatar" style={{ width: 32, height: 32, fontSize: 11 }}>
+                  {isMe
+                    ? (myAvatar ? <img src={myAvatar} alt="Me" className="feed-card-avatar-img" /> : (myName ?? 'ME').slice(0,2).toUpperCase())
+                    : fUser?.avatar ? <img src={fUser.avatar} alt={fUser.name} className="feed-card-avatar-img" /> : fUser?.initials
+                  }
+                </div>
+                <div>
+                  <span className="feed-detail-username">{isMe ? (myName ?? 'You') : fUser?.name}</span>
+                  <span className="feed-detail-zodiac">{isMe ? '' : fUser?.zodiac}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="feed-detail-image" style={{ background: focusDream.visual }} />
+
+            <div className="feed-detail-scroll">
+              <h2 className="feed-detail-title">{focusDream.title}</h2>
+              <p className="feed-detail-text">{focusDream.text}</p>
+              <div className="feed-card-tags" style={{ marginTop: 12 }}>
+                {focusDream.tags.map(t => <span key={t} className="feed-card-tag">{t}</span>)}
+              </div>
+
+              <div className="feed-detail-actions">
+                <button
+                  className={`feed-action-btn ${isLiked ? 'active' : ''}`}
+                  onClick={() => setLiked(l => ({ ...l, [focusDream.id]: !isLiked }))}
+                >
+                  <svg width="18" height="18" viewBox="0 0 16 16" fill={isLiked ? 'currentColor' : 'none'}>
+                    <path d="M8 13.5S2 9.5 2 5.5a3 3 0 016 0 3 3 0 016 0c0 4-6 8-6 8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                  </svg>
+                  <span>{focusDream.likes + (isLiked ? 1 : 0)}</span>
+                </button>
+                <button
+                  className={`feed-action-btn ${isSaved ? 'active' : ''}`}
+                  onClick={() => setSaved(s => ({ ...s, [focusDream.id]: !isSaved }))}
+                >
+                  <svg width="18" height="18" viewBox="0 0 16 16" fill={isSaved ? 'currentColor' : 'none'}>
+                    <path d="M3 2h10v12l-5-3-5 3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                  </svg>
+                  <span>{focusDream.saves + (isSaved ? 1 : 0)}</span>
+                </button>
+              </div>
+
+              <div className="feed-detail-comments">
+                <p className="feed-detail-comments-label">Comments · {focusDream.comments + localComments.length}</p>
+                {localComments.map((c, i) => (
+                  <div key={i} className="feed-detail-comment-row">
+                    <span className="feed-detail-comment-name">You</span>
+                    <span className="feed-detail-comment-text">{c.text}</span>
+                    <span className="feed-detail-comment-time">{c.time}</span>
+                  </div>
+                ))}
+                <div className="feed-detail-comment-input-row">
+                  <input
+                    className="feed-detail-comment-input"
+                    placeholder="Add a comment…"
+                    value={commentInput}
+                    onChange={e => setCommentInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && commentInput.trim()) {
+                        setLocalComments(prev => [...prev, { text: commentInput.trim(), time: 'Just now' }])
+                        setCommentInput('')
+                      }
+                    }}
+                  />
+                  {commentInput.trim() && (
+                    <button className="feed-detail-comment-send" onClick={() => {
+                      setLocalComments(prev => [...prev, { text: commentInput.trim(), time: 'Just now' }])
+                      setCommentInput('')
+                    }}>Send</button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ height: 80 }} />
+            </div>
+          </div>
+        )
+      })()}
 
     </div>
   )

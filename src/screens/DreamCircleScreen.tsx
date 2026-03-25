@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import './DreamCircleScreen.css'
-import { COMMUNITY_USERS } from '../data/mockCommunity'
+import { COMMUNITY_USERS, type CommunityUser } from '../data/mockCommunity'
 import type { Dream } from '../types/dream'
 
 export interface DreamCircle {
@@ -8,6 +8,9 @@ export interface DreamCircle {
   color: string
   memberIds: string[]
 }
+
+type InviteStatus = 'pending' | 'accepted' | 'rejected'
+interface Invitation { userId: string; email: string; status: InviteStatus }
 
 interface DreamCircleScreenProps {
   circle: DreamCircle
@@ -22,12 +25,15 @@ const CIRCLE_COLORS = [
 ]
 
 export function DreamCircleScreen({ circle, dreams, myName, onUpdate, onBack }: DreamCircleScreenProps) {
-  const [editingName, setEditingName] = useState(false)
-  const [nameVal,     setNameVal]     = useState(circle.name)
-  const [showAdd,     setShowAdd]     = useState(false)
-  const [showColors,  setShowColors]  = useState(false)
-  const [pendingIds,  setPendingIds]  = useState<string[]>([])
-  const [emailInput,  setEmailInput]  = useState('')
+  const [editingName,   setEditingName]   = useState(false)
+  const [nameVal,       setNameVal]       = useState(circle.name)
+  const [showAdd,       setShowAdd]       = useState(false)
+  const [showColors,    setShowColors]    = useState(false)
+  const [pendingIds,    setPendingIds]    = useState<string[]>([])
+  const [emailInput,    setEmailInput]    = useState('')
+  const [emailError,    setEmailError]    = useState('')
+  const [invitations,   setInvitations]   = useState<Invitation[]>([])
+  const [profileUser,   setProfileUser]   = useState<CommunityUser | null>(null)
 
   const members      = COMMUNITY_USERS.filter(u => circle.memberIds.includes(u.id))
   const circleDreams = dreams.filter(d => d.visibility === 'circle')
@@ -55,6 +61,24 @@ export function DreamCircleScreen({ circle, dreams, myName, onUpdate, onBack }: 
     setPendingIds(prev =>
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     )
+  }
+
+  function handleEmailInvite() {
+    const email = emailInput.trim().toLowerCase()
+    setEmailError('')
+    if (!email) return
+    const found = COMMUNITY_USERS.find(u => u.email?.toLowerCase() === email)
+    if (!found) {
+      setEmailError('User not found')
+      return
+    }
+    const already = invitations.find(i => i.userId === found.id)
+    if (already) {
+      setEmailError(already.status === 'pending' ? 'Invitation already sent' : 'Already responded')
+      return
+    }
+    setInvitations(prev => [...prev, { userId: found.id, email, status: 'pending' }])
+    setEmailInput('')
   }
 
   function handleSendInvites() {
@@ -183,7 +207,7 @@ export function DreamCircleScreen({ circle, dreams, myName, onUpdate, onBack }: 
               </div>
             </div>
             {members.map(m => (
-              <div key={m.id} className="circle-member-row">
+              <div key={m.id} className="circle-member-row" onClick={() => setProfileUser(m)} style={{ cursor: 'pointer' }}>
                 <div className="circle-member-avatar">
                   {m.avatar
                     ? <img src={m.avatar} alt={m.name} className="circle-member-img" />
@@ -194,7 +218,7 @@ export function DreamCircleScreen({ circle, dreams, myName, onUpdate, onBack }: 
                   <span className="circle-member-name">{m.name}</span>
                   <span className="circle-member-zodiac">{m.zodiac} Member</span>
                 </div>
-                <button className="circle-member-remove" onClick={() => toggleMember(m.id)} aria-label="Remove">
+                <button className="circle-member-remove" onClick={e => { e.stopPropagation(); toggleMember(m.id) }} aria-label="Remove">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <line x1="3" y1="3" x2="11" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
                     <line x1="11" y1="3" x2="3" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -238,16 +262,37 @@ export function DreamCircleScreen({ circle, dreams, myName, onUpdate, onBack }: 
               <div className="circle-sheet-handle" />
               <p className="circle-sheet-title">Add to {circle.name}</p>
 
-              <div className="circle-sheet-search-wrap">
-                <input
-                  className="circle-sheet-search"
-                  type="text"
-                  placeholder="Search by name or enter email…"
-                  value={emailInput}
-                  onChange={e => setEmailInput(e.target.value)}
-                  autoComplete="off"
-                />
+              {/* Email invite */}
+              <div className="circle-email-invite-wrap">
+                <div className="circle-email-row">
+                  <input
+                    className="circle-sheet-search"
+                    type="email"
+                    placeholder="Enter email to invite…"
+                    value={emailInput}
+                    onChange={e => { setEmailInput(e.target.value); setEmailError('') }}
+                    onKeyDown={e => e.key === 'Enter' && handleEmailInvite()}
+                    autoComplete="off"
+                  />
+                  <button className="circle-email-send-btn" onClick={handleEmailInvite}>Send</button>
+                </div>
+                {emailError && <p className="circle-email-error">{emailError}</p>}
+                {invitations.length > 0 && (
+                  <div className="circle-invitations-list">
+                    {invitations.map(inv => {
+                      const u = COMMUNITY_USERS.find(u => u.id === inv.userId)
+                      return (
+                        <div key={inv.userId} className="circle-inv-row">
+                          <span className="circle-inv-name">{u?.name ?? inv.email}</span>
+                          <span className={`circle-inv-status circle-inv-${inv.status}`}>{inv.status}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
+
+              <div className="circle-sheet-divider"><span>or browse</span></div>
 
               {filtered.length === 0 ? (
                 <p className="circle-sheet-empty">No results found.</p>
@@ -295,6 +340,51 @@ export function DreamCircleScreen({ circle, dreams, myName, onUpdate, onBack }: 
           </>
         )
       })()}
+
+      {/* ── Member profile preview ───────────────────────── */}
+      {profileUser && (
+        <>
+          <div className="circle-sheet-scrim" onClick={() => setProfileUser(null)} />
+          <div className="circle-sheet circle-profile-sheet">
+            <div className="circle-sheet-handle" />
+            <div className="circle-profile-header">
+              <div className="circle-profile-avatar">
+                {profileUser.avatar
+                  ? <img src={profileUser.avatar} alt={profileUser.name} className="circle-member-img" />
+                  : <span>{profileUser.initials}</span>
+                }
+              </div>
+              <div>
+                <p className="circle-profile-name">{profileUser.name}</p>
+                <p className="circle-profile-zodiac">{profileUser.zodiac} Dream Circle member</p>
+              </div>
+            </div>
+            <div className="circle-profile-actions">
+              <button
+                className="circle-profile-action-btn circle-profile-follow"
+                onClick={() => setProfileUser(null)}
+              >
+                Follow
+              </button>
+              {!circle.memberIds.includes(profileUser.id) ? (
+                <button
+                  className="circle-profile-action-btn circle-profile-add"
+                  onClick={() => { toggleMember(profileUser.id); setProfileUser(null) }}
+                >
+                  Add to Circle
+                </button>
+              ) : (
+                <button
+                  className="circle-profile-action-btn circle-profile-remove-circle"
+                  onClick={() => { toggleMember(profileUser.id); setProfileUser(null) }}
+                >
+                  Remove from Circle
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   )

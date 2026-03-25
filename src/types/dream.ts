@@ -19,6 +19,7 @@ export interface Dream {
   circleId?: string             // which circle, when visibility === 'circle'
   inStory: boolean              // added to dream story (24h visible)
   inFeed: boolean               // mirrored to social feed
+  thumbnailUrl?: string         // auto-assigned from pool on save
   interpretations?: DreamInterpretation[]
   comments?: Comment[]
   bookmarked?: boolean

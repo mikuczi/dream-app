@@ -296,6 +296,8 @@ input, textarea {
   color: var(--text-tertiary);
 }
 .app-notif-item:last-child { border-bottom: none; }
+.app-notif-item-link { cursor: pointer; border-radius: var(--radius-sm); }
+.app-notif-item-link:active { background: rgba(255,255,255,0.04); }
 .app-notif-body { display: flex; flex-direction: column; gap: 2px; }
 .app-notif-text { font-family: var(--font-ui); font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
 .app-notif-time { font-family: var(--font-ui); font-size: 11px; color: var(--text-tertiary); }

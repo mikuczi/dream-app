@@ -5,6 +5,7 @@ export interface CommunityUser {
   zodiac: string
   viewed: boolean
   avatar?: string
+  email?: string
 }
 
 export interface CommunityDream {
@@ -25,14 +26,10 @@ export interface CommunityDream {
 }
 
 export const COMMUNITY_USERS: CommunityUser[] = [
-  { id: 'u1', name: 'Alicja',   initials: 'Al', zodiac: '♓', viewed: false, avatar: '/photos/Alicja.png'   },
-  { id: 'u2', name: 'Sofia',    initials: 'So', zodiac: '♏', viewed: false, avatar: '/photos/Sofia.png'    },
-  { id: 'u3', name: 'Justyna',  initials: 'Ju', zodiac: '♊', viewed: true,  avatar: '/photos/Justyna.png'  },
-  { id: 'u4', name: 'Karolina', initials: 'Ka', zodiac: '♌', viewed: false, avatar: '/photos/Karolina.png' },
-  { id: 'u5', name: 'Miki',     initials: 'Mi', zodiac: '♑', viewed: true,  avatar: '/photos/Miki.png'     },
-  { id: 'u6', name: 'Lev',      initials: 'Le', zodiac: '♎', viewed: false },
-  { id: 'u7', name: 'Théo',     initials: 'Th', zodiac: '♒', viewed: false },
-  { id: 'u8', name: 'Ren',      initials: 'Re', zodiac: '♍', viewed: true  },
+  { id: 'u1', name: 'Alicja',   initials: 'Al', zodiac: '♓', viewed: false, avatar: '/photos/Alicja.png',   email: 'alicja@example.com'   },
+  { id: 'u2', name: 'Sofia',    initials: 'So', zodiac: '♏', viewed: false, avatar: '/photos/Sofia.png',    email: 'sofia@example.com'    },
+  { id: 'u3', name: 'Justyna',  initials: 'Ju', zodiac: '♊', viewed: true,  avatar: '/photos/Justyna.png',  email: 'justyna@example.com'  },
+  { id: 'u4', name: 'Karlina',  initials: 'Ka', zodiac: '♌', viewed: false, avatar: '/photos/Karolina.png', email: 'karlina@example.com'  },
 ]
 
 // Each user gets 1–2 story dreams (the story strip)
@@ -65,48 +62,12 @@ export const STORY_DREAMS: CommunityDream[] = [
     liked: false, saved: false,
   },
   {
-    id: 's4', userId: 'u6',
-    title: 'The Infinite Library',
-    text: 'Every book was my own diary. When I opened them the pages were blank, but if I exhaled onto them the words appeared — memories I\'d already forgotten.',
-    tags: ['Books', 'Memory', 'Mystery'],
-    mood: 'strange', likes: 198, comments: 8, saves: 33, timeAgo: '12h',
-    visual: 'url(/photos/Dream4.jpg) center/cover',
-    liked: false, saved: false,
-  },
-  {
-    id: 's5', userId: 'u7',
-    title: 'Red Forest at Dawn',
-    text: 'The trees were all red — not autumn red, but deep arterial red. I walked through them and felt no fear. A white deer appeared and bowed before disappearing into light.',
-    tags: ['Forest', 'Animals', 'Spiritual'],
-    mood: 'peaceful', likes: 341, comments: 22, saves: 61, timeAgo: '2d',
-    visual: 'url(/photos/Dream5.jpg) center/cover',
-    liked: false, saved: false,
-  },
-  {
     id: 's6', userId: 'u3',
     title: 'Underwater City',
     text: 'There was an entire civilization beneath the sea. They breathed water like air. They offered me gills carved from moonstone and asked if I wanted to stay.',
     tags: ['Ocean', 'Ancient', 'Choice'],
     mood: 'strange', likes: 509, comments: 63, saves: 77, timeAgo: '5h',
     visual: 'url(/photos/Dream6.jpg) center/cover',
-    liked: false, saved: false,
-  },
-  {
-    id: 's7', userId: 'u5',
-    title: 'The Exam I Never Took',
-    text: 'I sat down to an exam for a class I\'d never attended. Then I realized I was the professor. The students were all versions of me at different ages, waiting.',
-    tags: ['Anxiety', 'School', 'Shadow'],
-    mood: 'anxious', likes: 762, comments: 94, saves: 112, timeAgo: '1d',
-    visual: 'url(/photos/Dream7.jpg) center/cover',
-    liked: false, saved: false,
-  },
-  {
-    id: 's8', userId: 'u8',
-    title: 'Desert of Clocks',
-    text: 'A vast desert but instead of sand, broken clocks as far as I could see. I picked one up and it showed a time that hadn\'t happened yet.',
-    tags: ['Time', 'Desert', 'Prophecy'],
-    mood: 'strange', likes: 445, comments: 37, saves: 68, timeAgo: '8h',
-    visual: 'url(/photos/Dream8.jpg) center/cover',
     liked: false, saved: false,
   },
 ]

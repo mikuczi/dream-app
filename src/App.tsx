@@ -98,13 +98,16 @@ export function App() {
   const [badgeFlags,        setBadgeFlags]        = useState<BadgeFlags>({ viewedConstellation: false, createdCircle: false })
   const [paywallOpen,       setPaywallOpen]       = useState(false)
   const [dailyLimitOpen,    setDailyLimitOpen]    = useState(false)
+  const [avatarUrl,         setAvatarUrl]         = useState<string | undefined>(() =>
+    localStorage.getItem('dj_avatar') ?? undefined
+  )
   const [checkInOpen,       setCheckInOpen]       = useState(false)
   const [newBadge,          setNewBadge]          = useState<{ name: string; icon: string } | null>(null)
   const seenBadgeIds = useRef<Set<string>>(new Set(JSON.parse(localStorage.getItem(KEY_SEEN_BADGES) ?? '[]')))
   const [drawerOpen,        setDrawerOpen]        = useState(false)
   const [searchOpen,        setSearchOpen]        = useState(false)
   const [notifOpen,         setNotifOpen]         = useState(false)
-  const [notifications,     setNotifications]     = useState<{ id: string; text: string; time: string; read: boolean }[]>([])
+  const [notifications,     setNotifications]     = useState<{ id: string; text: string; time: string; read: boolean; dreamId?: string }[]>([])
   const [saveToast,         setSaveToast]         = useState('')
   const seenConnectionIds = useRef<Set<string>>(new Set())
 
@@ -179,7 +182,7 @@ export function App() {
         dob:          existing?.dob ?? '',
         zodiacSign:   existing?.zodiacSign ?? (existing?.dob ? getZodiacSign(existing.dob).sign : 'pisces'),
         createdAt:    existing?.createdAt ?? new Date().toISOString(),
-        photoURL:     fbUser.photoURL ?? undefined,
+        photoURL:     avatarUrl ?? fbUser.photoURL ?? undefined,
       }
       localStorage.setItem(KEY_USER, JSON.stringify(merged))
       setUser(merged)
@@ -277,6 +280,7 @@ export function App() {
       text: `"${dream.title}" was saved${dream.inStory ? ' & added to your story' : ''}`,
       time: 'Just now',
       read: false,
+      dreamId: dream.id,
     }, ...prev])
   }
 
@@ -311,6 +315,12 @@ export function App() {
     if (!dream) return
     updateDream(id, { bookmarked: !dream.bookmarked })
     if (focusDream?.id === id) setFocusDream({ ...focusDream, bookmarked: !focusDream.bookmarked })
+  }
+
+  // ── Avatar upload ─────────────────────────────────────
+  function handleAvatarUpload(dataUrl: string) {
+    setAvatarUrl(dataUrl)
+    localStorage.setItem('dj_avatar', dataUrl)
   }
 
   // ── Sign out ──────────────────────────────────────────
@@ -372,7 +382,7 @@ export function App() {
           />
         )}
         {activeView === 'library'     && <LibraryScreen />}
-        {activeView === 'social'      && <SocialScreen onOpenStory={idx => setStoryIndex(idx)} onAddStory={openRecording} myName={user?.name} myStories={myStories} dreams={dreams} circle={circle} onManageCircle={() => setActiveView('circle')} />}
+        {activeView === 'social'      && <SocialScreen onOpenStory={idx => setStoryIndex(idx)} onAddStory={openRecording} myName={user?.name} myAvatar={avatarUrl ?? user?.photoURL} myStories={myStories} dreams={dreams} circle={circle} onManageCircle={() => setActiveView('circle')} />}
         {activeView === 'circle'      && <DreamCircleScreen circle={circle} dreams={dreams} myName={user?.name} onUpdate={c => { setCircle(c); if (c.memberIds.length > 0) setBadgeFlags(f => ({ ...f, createdCircle: true })) }} onBack={() => setActiveView('social')} />}
         {activeView === 'me'          && (
           <MeScreen
@@ -387,6 +397,8 @@ export function App() {
             badgeFlags={badgeFlags}
             todayRecordings={getTodayRecordings().count}
             dailyLimit={FREE_DAILY_LIMIT}
+            circleCount={circle.memberIds.length}
+            onAvatarUpload={handleAvatarUpload}
           />
         )}
       </div>
@@ -497,7 +509,12 @@ export function App() {
               <p className="app-notif-empty">No notifications yet.</p>
             ) : (
               notifications.map(n => (
-                <div key={n.id} className="app-notif-item">
+                <div key={n.id} className={`app-notif-item ${n.dreamId ? 'app-notif-item-link' : ''}`} onClick={() => {
+                  if (n.dreamId) {
+                    const dream = dreams.find(d => d.id === n.dreamId)
+                    if (dream) { handleOpenDream(dream); setNotifOpen(false) }
+                  }
+                }}>
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                     <path d="M8 1.5L9.5 6H14l-3.7 2.7 1.4 4.3L8 10.3l-3.7 2.7 1.4-4.3L2 6h4.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
                   </svg>

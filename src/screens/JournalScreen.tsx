@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react'
 import './JournalScreen.css'
 import type { Dream, DreamMood } from '../types/dream'
 
+type ViewMode = 'list' | 'grid'
+const VIEW_MODE_KEY = 'dj_journal_view'
+
 interface JournalScreenProps {
   dreams: Dream[]
   onBack?: () => void
@@ -56,20 +59,17 @@ function DreamCard({ dream, onOpenDream }: { dream: Dream; onOpenDream?: (dream:
     : dream.transcript
 
   return (
-    <button
-      className="dream-card"
-      onClick={() => onOpenDream?.(dream)}
-      style={{ textAlign: 'left', width: '100%' }}
-    >
+    <button className="dream-card" onClick={() => onOpenDream?.(dream)} style={{ textAlign: 'left', width: '100%' }}>
+      {dream.thumbnailUrl && (
+        <div className="dream-card-thumb" style={{ backgroundImage: `url(${dream.thumbnailUrl})` }} />
+      )}
       <div className="dream-card-header">
         <span className="dream-card-date">{formatDate(dream.createdAt)}</span>
         <div className="dream-card-header-right">
           <span className="dream-card-privacy">
-            {dream.isPrivate ? '◎ private' : '◯ shared'}
+            {dream.visibility === 'private' ? '◎' : dream.visibility === 'circle' ? '◈' : '◯'}
           </span>
-          <span className="dream-card-mood" title={dream.mood}>
-            {MOOD_SYMBOLS[dream.mood]}
-          </span>
+          <span className="dream-card-mood" title={dream.mood}>{MOOD_SYMBOLS[dream.mood]}</span>
         </div>
       </div>
       <div className="dream-card-title">{dream.title}</div>
@@ -85,6 +85,26 @@ function DreamCard({ dream, onOpenDream }: { dream: Dream; onOpenDream?: (dream:
             <div key={i} className={`clarity-dot ${i < dream.clarity ? 'filled' : ''}`} />
           ))}
         </div>
+      </div>
+    </button>
+  )
+}
+
+function GridCard({ dream, onOpenDream }: { dream: Dream; onOpenDream?: (dream: Dream) => void }) {
+  return (
+    <button className="dream-grid-card" onClick={() => onOpenDream?.(dream)}>
+      <div
+        className="dream-grid-thumb"
+        style={dream.thumbnailUrl
+          ? { backgroundImage: `url(${dream.thumbnailUrl})` }
+          : { background: 'radial-gradient(ellipse at 40% 30%, #1a1030 0%, #080510 100%)' }
+        }
+      >
+        <span className="dream-grid-mood">{MOOD_SYMBOLS[dream.mood]}</span>
+      </div>
+      <div className="dream-grid-info">
+        <span className="dream-grid-title">{dream.title}</span>
+        <span className="dream-grid-date">{formatDate(dream.createdAt)}</span>
       </div>
     </button>
   )
@@ -146,6 +166,15 @@ export function JournalScreen({ dreams, onBack, tabMode = false, onOpenDream, on
   const [showCalendar,   setShowCalendar]   = useState(false)
   const [selectedDay,    setSelectedDay]    = useState<Date | null>(null)
   const [calDayDreams,   setCalDayDreams]   = useState<Dream[] | null>(null)
+  const [viewMode,       setViewMode]       = useState<ViewMode>(() =>
+    (localStorage.getItem(VIEW_MODE_KEY) as ViewMode) ?? 'list'
+  )
+
+  function toggleView() {
+    const next: ViewMode = viewMode === 'list' ? 'grid' : 'list'
+    setViewMode(next)
+    localStorage.setItem(VIEW_MODE_KEY, next)
+  }
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
 
@@ -208,13 +237,31 @@ export function JournalScreen({ dreams, onBack, tabMode = false, onOpenDream, on
           : <div style={{ width: 60 }} />
         }
         <span className="journal-header-title">Journal</span>
-        <button
-          className={`journal-cal-btn ${showCalendar ? 'active' : ''}`}
-          onClick={() => setShowCalendar(v => !v)}
-          aria-label="Toggle calendar"
-        >
-          {showCalendar ? '✕' : '⊞'}
-        </button>
+        <div className="journal-header-actions">
+          <button className="journal-view-toggle" onClick={toggleView} aria-label="Toggle view">
+            {viewMode === 'list' ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="1" y="2" width="14" height="3" rx="1" fill="currentColor" opacity=".7"/>
+                <rect x="1" y="7" width="14" height="3" rx="1" fill="currentColor" opacity=".7"/>
+                <rect x="1" y="12" width="14" height="2" rx="1" fill="currentColor" opacity=".4"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".7"/>
+                <rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".7"/>
+                <rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".7"/>
+                <rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".7"/>
+              </svg>
+            )}
+          </button>
+          <button
+            className={`journal-cal-btn ${showCalendar ? 'active' : ''}`}
+            onClick={() => setShowCalendar(v => !v)}
+            aria-label="Toggle calendar"
+          >
+            {showCalendar ? '✕' : '⊞'}
+          </button>
+        </div>
       </div>
 
       <div className="journal-scroll">
@@ -289,6 +336,12 @@ export function JournalScreen({ dreams, onBack, tabMode = false, onOpenDream, on
                 ? 'No dreams yet.\nYour dreams will appear here.'
                 : 'No dreams match this filter.'}
             </p>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="journal-grid">
+            {filtered.map(dream => (
+              <GridCard key={dream.id} dream={dream} onOpenDream={onOpenDream} />
+            ))}
           </div>
         ) : (
           <div className="journal-list">

@@ -572,3 +572,102 @@
   background: rgba(255, 255, 255, 0.12);
   color: var(--text-primary);
 }
+
+/* ── Header actions cluster ───────────────────────── */
+.journal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.journal-view-toggle {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition: color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.journal-view-toggle:active {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.06);
+}
+
+/* ── Dream card thumbnail ─────────────────────────── */
+.dream-card-thumb {
+  width: 100%;
+  height: 110px;
+  border-radius: var(--radius-sm);
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 10px;
+  opacity: 0.75;
+}
+
+/* ── Grid view ────────────────────────────────────── */
+.journal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 16px;
+}
+
+.dream-grid-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s;
+}
+
+.dream-grid-card:active { border-color: var(--border-strong); }
+
+.dream-grid-thumb {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.dream-grid-mood {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  font-size: 14px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+}
+
+.dream-grid-info {
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dream-grid-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dream-grid-date {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+}

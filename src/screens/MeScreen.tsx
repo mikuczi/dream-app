@@ -16,6 +16,8 @@ interface MeScreenProps {
   badgeFlags?: BadgeFlags
   todayRecordings?: number
   dailyLimit?: number
+  circleCount?: number
+  onAvatarUpload?: (dataUrl: string) => void
 }
 
 function exportDreams(dreams: Dream[], userName?: string) {
@@ -66,7 +68,7 @@ function calculateStreak(dreams: Dream[]) {
   return streak
 }
 
-export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onRecord, onSettings, onPaywall, badgeFlags, todayRecordings = 0, dailyLimit = 3 }: MeScreenProps) {
+export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onRecord, onSettings, onPaywall, badgeFlags, todayRecordings = 0, dailyLimit = 3, circleCount = 0, onAvatarUpload }: MeScreenProps) {
 
   // Guest
   if (!user) {
@@ -103,13 +105,19 @@ export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onReco
 
   const isNew = dreams.length < 3
 
-  const analysesCount = dreams.filter(d => (d.interpretations?.length ?? 0) > 0).length
-
   const stats = [
-    { value: dreams.length,  label: 'dreams'   },
-    { value: symbolCount,    label: 'symbols'  },
-    { value: analysesCount,  label: 'analyses' },
+    { value: dreams.length,  label: 'dreams'      },
+    { value: symbolCount,    label: 'symbols'     },
+    { value: circleCount,    label: 'connections' },
   ]
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => { if (typeof reader.result === 'string') onAvatarUpload?.(reader.result) }
+    reader.readAsDataURL(file)
+  }
 
   return (
     <div className="me-screen">
@@ -118,7 +126,14 @@ export function MeScreen({ user, dreams, onSignOut, onWhatsApp, onSignIn, onReco
         {/* ── Profile header ─────────────────────────────── */}
         <div className="me-profile-top">
           <div className="me-avatar-name-row">
-            <div className="me-avatar">{getInitials(user.name)}</div>
+            <label className="me-avatar me-avatar-upload" title="Change photo">
+              {user.photoURL
+                ? <img src={user.photoURL} alt={user.name} className="me-avatar-img" />
+                : getInitials(user.name)
+              }
+              <span className="me-avatar-edit-badge">✎</span>
+              <input type="file" accept="image/*" className="me-avatar-file-input" onChange={handleAvatarChange} />
+            </label>
             <div className="me-identity">
               <h1 className="me-name">{user.name}</h1>
               <p className="me-bio-line">{zodiacSymbol} {signName} · {zodiacElem} dreamer</p>
