@@ -23,6 +23,11 @@ export interface CommunityDream {
   visual: string
   liked: boolean
   saved: boolean
+  /** Story expiry ISO timestamp */
+  storyExpiresAt?: string
+  /** For Firestore-backed posts: author display info */
+  authorName?: string
+  authorPhoto?: string
 }
 
 export const COMMUNITY_USERS: CommunityUser[] = [

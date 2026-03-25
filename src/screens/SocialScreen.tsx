@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './SocialScreen.css'
 import {
   COMMUNITY_USERS,
@@ -6,13 +6,14 @@ import {
   FEED_DREAMS,
   type CommunityDream,
 } from '../data/mockCommunity'
-import type { Dream, Comment, AppNotification } from '../types/dream'
+import type { Dream, Comment, AppNotification, FeedPost } from '../types/dream'
 import { getSharedPatterns } from '../utils/dreamConnections'
 import type { DreamCircle } from './DreamCircleScreen'
-import { setLike, addComment, createNotification } from '../lib/firestore'
+import { setLike, addComment, createNotification, subscribePublicFeed, fetchActiveStories, fetchCircleFeedByMemberIds } from '../lib/firestore'
 
 interface SocialScreenProps {
   onOpenStory: (index: number) => void
+  onOpenMyStory?: () => void
   onAddStory?: () => void
   myName?: string
   myAvatar?: string
@@ -24,12 +25,32 @@ interface SocialScreenProps {
   currentUserName?: string
   followingSet?: Set<string>
   onFollow?: (targetUid: string, targetName: string, targetUsername: string) => void
+  onViewProfile?: (uid: string) => void
 }
 
 type FeedSort  = 'recent' | 'top'
 type SocialTab = 'community' | 'circle'
 
-export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStories = [], dreams = [], circle, onManageCircle, currentUserId, currentUserName, followingSet, onFollow }: SocialScreenProps) {
+function feedPostToCommunityDream(p: FeedPost): CommunityDream {
+  const mins = Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 60000)
+  const timeAgo = mins < 1 ? 'Just now' : mins < 60 ? `${mins}m ago` : mins < 1440 ? `${Math.floor(mins/60)}h ago` : `${Math.floor(mins/1440)}d ago`
+  return {
+    id: p.id,
+    userId: p.authorId,
+    title: p.title,
+    text: p.transcript.slice(0, 180) + (p.transcript.length > 180 ? '…' : ''),
+    visual: 'radial-gradient(ellipse at 50% 30%, #1a1030 0%, #080510 100%)',
+    mood: p.mood,
+    tags: p.tags.slice(0, 3),
+    likes: p.likeCount ?? 0, comments: p.commentCount ?? 0, saves: 0,
+    timeAgo,
+    liked: false, saved: false,
+    authorName: p.authorName,
+    authorPhoto: p.authorPhoto,
+  }
+}
+
+export function SocialScreen({ onOpenStory, onOpenMyStory, onAddStory, myName, myAvatar, myStories = [], dreams = [], circle, onManageCircle, currentUserId, currentUserName, followingSet, onFollow, onViewProfile }: SocialScreenProps) {
   const [viewedSet,       setViewedSet]       = useState<Set<string>>(
     () => new Set(COMMUNITY_USERS.filter(u => u.viewed).map(u => u.id))
   )
@@ -40,9 +61,44 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
   const [focusDream,      setFocusDream]      = useState<CommunityDream | null>(null)
   const [commentInput,    setCommentInput]    = useState('')
   const [localComments,   setLocalComments]   = useState<{ text: string; time: string }[]>([])
+  const [liveFeed,        setLiveFeed]        = useState<CommunityDream[]>([])
+  const [feedLoading,     setFeedLoading]     = useState(true)
+  // authorId → { name, photo } for real story bubbles
+  const [liveStoryUsers,  setLiveStoryUsers]  = useState<Map<string, { name: string; photo?: string }>>(new Map())
+  const [circleLiveFeed,  setCircleLiveFeed]  = useState<CommunityDream[]>([])
 
+  useEffect(() => {
+    return subscribePublicFeed(30, posts => {
+      setLiveFeed(posts.map(feedPostToCommunityDream))
+      setFeedLoading(false)
+    })
+  }, [])
+
+  // Real story strip from Firestore
+  useEffect(() => {
+    fetchActiveStories(20).then(posts => {
+      const map = new Map<string, { name: string; photo?: string }>()
+      posts.forEach(p => {
+        if (p.authorId !== currentUserId) {
+          map.set(p.authorId, { name: p.authorName, photo: p.authorPhoto })
+        }
+      })
+      setLiveStoryUsers(map)
+    }).catch(() => {})
+  }, [currentUserId])
+
+  // Circle feed from Firestore
+  useEffect(() => {
+    if (!currentUserId) return
+    const memberIds = [currentUserId, ...(circle?.memberIds ?? [])]
+    fetchCircleFeedByMemberIds(memberIds, 30).then(posts => {
+      setCircleLiveFeed(posts.map(feedPostToCommunityDream))
+    }).catch(() => {})
+  }, [currentUserId, circle?.memberIds?.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const now = new Date().toISOString()
   const storyUsers = COMMUNITY_USERS.filter(u =>
-    STORY_DREAMS.some(d => d.userId === u.id)
+    STORY_DREAMS.some(d => d.userId === u.id && (!d.storyExpiresAt || d.storyExpiresAt > now))
   )
 
   function submitComment() {
@@ -96,14 +152,35 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
 
   const sharedPatterns = getSharedPatterns(dreams)
 
-  const sortedFeed: CommunityDream[] = [...myFeedItems, ...FEED_DREAMS].sort((a, b) =>
+  // Merge live Firestore posts with mock fallback (deduplicate by id)
+  const liveIds = new Set(liveFeed.map(d => d.id))
+  const mockFallback = feedLoading ? FEED_DREAMS : FEED_DREAMS.filter(d => !liveIds.has(d.id))
+  const sortedFeed: CommunityDream[] = [...myFeedItems, ...liveFeed, ...mockFallback].sort((a, b) =>
     sort === 'top' ? b.likes - a.likes : 0
   )
 
-  // Circle feed — user's dreams with visibility === 'circle'
-  const circleDreams = dreams.filter(d => d.visibility === 'circle')
+  // Circle feed — merge Firestore live posts with local circle dreams as fallback
+  const localCircleDreams: CommunityDream[] = dreams
+    .filter(d => d.visibility === 'circle')
+    .map(d => ({
+      id: d.id, userId: 'me', title: d.title,
+      text: d.transcript.slice(0, 120) + (d.transcript.length > 120 ? '…' : ''),
+      visual: d.artwork ?? 'radial-gradient(ellipse at 50% 30%, #1a1030 0%, #080510 100%)',
+      mood: d.mood, tags: d.tags.slice(0, 3),
+      likes: 0, comments: 0, saves: 0,
+      timeAgo: 'Just now', liked: false, saved: false,
+    }))
+  const liveCircleIds = new Set(circleLiveFeed.map(d => d.id))
+  const mergedCircleFeed = [...circleLiveFeed, ...localCircleDreams.filter(d => !liveCircleIds.has(d.id))]
+  // Build member display info from live feed authors (real data) with mock fallback
   const circleMembers = circle
-    ? COMMUNITY_USERS.filter(u => circle.memberIds.includes(u.id))
+    ? circle.memberIds.map(uid => {
+        const mock = COMMUNITY_USERS.find(u => u.id === uid)
+        const live = circleLiveFeed.find(d => d.userId === uid)
+        if (mock) return { id: uid, name: mock.name, initials: mock.initials, avatar: mock.avatar }
+        if (live) return { id: uid, name: live.authorName ?? uid, initials: (live.authorName ?? uid).slice(0,2).toUpperCase(), avatar: live.authorPhoto }
+        return { id: uid, name: uid.slice(0, 8), initials: uid.slice(0,2).toUpperCase(), avatar: undefined }
+      })
     : []
 
   const moodEmoji: Record<string, string> = {
@@ -139,7 +216,10 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
           <div className="social-stories-wrap">
             <div className="social-stories-row">
               {/* My Story */}
-              <button className="story-avatar-btn" onClick={myStories.length > 0 ? undefined : onAddStory}>
+              <button
+                className="story-avatar-btn"
+                onClick={myStories.length > 0 ? onOpenMyStory : onAddStory}
+              >
                 <div className={`story-ring ${myStories.length > 0 ? 'unviewed' : 'story-ring-mine'}`}>
                   <div className={`story-avatar-circle ${myStories.length === 0 ? 'story-avatar-mine' : ''}`}
                     style={myStories[0]?.artwork ? { background: myStories[0].artwork } : undefined}
@@ -154,7 +234,34 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
                 <span className="story-avatar-name">Your Story</span>
               </button>
 
-              {storyUsers.map(user => {
+              {/* Real Firestore story authors */}
+              {[...liveStoryUsers.entries()].map(([uid, info]) => {
+                const viewed = viewedSet.has(uid)
+                const initials = info.name.slice(0, 2).toUpperCase()
+                const livePost = liveFeed.find(d => d.userId === uid)
+                return (
+                  <button
+                    key={uid}
+                    className="story-avatar-btn"
+                    onClick={() => {
+                      setViewedSet(s => new Set([...s, uid]))
+                      if (livePost) setFocusDream(livePost)
+                    }}
+                  >
+                    <div className={`story-ring ${viewed ? 'viewed' : 'unviewed'}`}>
+                      <div className="story-avatar-circle">
+                        {info.photo
+                          ? <img src={info.photo} alt={info.name} className="story-avatar-img" />
+                          : <span className="story-avatar-initials">{initials}</span>
+                        }
+                      </div>
+                    </div>
+                    <span className="story-avatar-name">{info.name.split(' ')[0]}</span>
+                  </button>
+                )
+              })}
+              {/* Mock story authors as fallback when no real stories exist */}
+              {liveStoryUsers.size === 0 && storyUsers.map(user => {
                 const viewed = viewedSet.has(user.id)
                 return (
                   <button
@@ -214,9 +321,15 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
 
           {/* Feed cards */}
           <div className="social-feed">
+            {feedLoading && liveFeed.length === 0 && (
+              <div className="feed-loading">
+                {[0,1,2].map(i => <div key={i} className="feed-skeleton" />)}
+              </div>
+            )}
             {sortedFeed.map(dream => {
               const isMe    = dream.userId === 'me'
-              const user    = isMe ? null : COMMUNITY_USERS.find(u => u.id === dream.userId)
+              const mockUser = isMe ? null : COMMUNITY_USERS.find(u => u.id === dream.userId)
+              const user     = mockUser ?? (dream.authorName ? { id: dream.userId, name: dream.authorName, initials: dream.authorName.slice(0,2).toUpperCase(), zodiac: '', viewed: false, avatar: dream.authorPhoto } : null)
               if (!isMe && !user) return null
               const isLiked = liked[dream.id] ?? dream.liked
               const isSaved = saved[dream.id] ?? dream.saved
@@ -339,7 +452,7 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
           <div className="social-divider" />
 
           {/* Circle dreams */}
-          {circleDreams.length === 0 ? (
+          {mergedCircleFeed.length === 0 ? (
             <div className="circle-feed-empty">
               <div className="circle-feed-empty-icon">◉</div>
               <p className="circle-feed-empty-title">Nothing shared yet</p>
@@ -349,36 +462,34 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
             </div>
           ) : (
             <div className="social-feed">
-              {circleDreams.map(dream => {
+              {mergedCircleFeed.map(dream => {
+                const isMe  = dream.userId === 'me' || dream.userId === currentUserId
+                const name  = isMe ? (myName ?? 'You') : (dream.authorName ?? 'Member')
+                const photo = isMe ? myAvatar : dream.authorPhoto
                 const emoji = moodEmoji[dream.mood] ?? '💭'
                 return (
-                  <div key={dream.id} className="feed-card feed-card-circle">
+                  <div key={dream.id} className="feed-card feed-card-circle" onClick={() => setFocusDream(dream)} style={{ cursor: 'pointer' }}>
                     <div className="feed-card-circle-badge">◉ Circle</div>
-                    <div
-                      className="feed-card-visual"
-                      style={{ background: dream.artwork ?? 'radial-gradient(ellipse at 50% 30%, #1a1030 0%, #080510 100%)' }}
-                    >
+                    <div className="feed-card-visual" style={{ background: dream.visual }}>
                       <span className="feed-card-mood">{emoji}</span>
                     </div>
                     <div className="feed-card-body">
                       <div className="feed-card-user-row">
                         <div className="feed-card-avatar">
-                          {myAvatar
-                            ? <img src={myAvatar} alt="Me" className="feed-card-avatar-img" />
-                            : myName ? myName.slice(0,2).toUpperCase() : 'ME'
+                          {photo
+                            ? <img src={photo} alt={name} className="feed-card-avatar-img" />
+                            : name.slice(0, 2).toUpperCase()
                           }
                         </div>
                         <div className="feed-card-user-info">
-                          <span className="feed-card-username">{myName ?? 'You'}</span>
-                          <span className="feed-card-time">Just now</span>
+                          <span className="feed-card-username">{name}</span>
+                          <span className="feed-card-time">{dream.timeAgo}</span>
                         </div>
                       </div>
                       <h3 className="feed-card-title">{dream.title}</h3>
-                      <p className="feed-card-text">
-                        {dream.transcript.slice(0, 120)}{dream.transcript.length > 120 ? '…' : ''}
-                      </p>
+                      <p className="feed-card-text">{dream.text}</p>
                       <div className="feed-card-tags">
-                        {dream.tags.slice(0, 3).map(t => <span key={t} className="feed-card-tag">{t}</span>)}
+                        {dream.tags.map(t => <span key={t} className="feed-card-tag">{t}</span>)}
                       </div>
                     </div>
                   </div>
@@ -391,8 +502,9 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
 
       {/* ── Full-screen dream overlay ─────────────────────── */}
       {focusDream && (() => {
-        const isMe   = focusDream.userId === 'me'
-        const fUser  = isMe ? null : COMMUNITY_USERS.find(u => u.id === focusDream.userId)
+        const isMe      = focusDream.userId === 'me'
+        const mockFUser = isMe ? null : COMMUNITY_USERS.find(u => u.id === focusDream.userId)
+        const fUser     = mockFUser ?? (focusDream.authorName ? { id: focusDream.userId, name: focusDream.authorName, initials: focusDream.authorName.slice(0,2).toUpperCase(), zodiac: '', viewed: false, avatar: focusDream.authorPhoto } : null)
         const isLiked = liked[focusDream.id] ?? focusDream.liked
         const isSaved = saved[focusDream.id] ?? focusDream.saved
         return (
@@ -403,7 +515,11 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
                   <path d="M12 4L6 10l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
-              <div className="feed-detail-user">
+              <div
+                className="feed-detail-user"
+                style={!isMe && onViewProfile ? { cursor: 'pointer' } : undefined}
+                onClick={!isMe && onViewProfile ? () => onViewProfile(focusDream.userId) : undefined}
+              >
                 <div className="feed-card-avatar" style={{ width: 32, height: 32, fontSize: 11 }}>
                   {isMe
                     ? (myAvatar ? <img src={myAvatar} alt="Me" className="feed-card-avatar-img" /> : (myName ?? 'ME').slice(0,2).toUpperCase())

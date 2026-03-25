@@ -5,7 +5,8 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut as fbSignOut, onAuthStateChanged, type User as FBUser } from 'firebase/auth'
 // signInWithPopup kept for potential future use
-import { getFirestore, doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc } from 'firebase/firestore'
+import { getFirestore, doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc, increment } from 'firebase/firestore'
+import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging'
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FB_API_KEY            ?? '',
@@ -27,7 +28,26 @@ try {
   if (app) db = getFirestore(app)
 } catch { /* Firestore not enabled — app runs in localStorage-only mode */ }
 
-export { auth, db, CONFIGURED }
+// FCM is optional — only available in secure contexts with a valid vapid key
+let messaging: Messaging | null = null
+try {
+  if (app && 'serviceWorker' in navigator) messaging = getMessaging(app)
+} catch { /* FCM not available */ }
+
+const VAPID_KEY = import.meta.env.VITE_FB_VAPID_KEY ?? ''
+
+export async function getFcmToken(): Promise<string | null> {
+  if (!messaging || !VAPID_KEY) return null
+  try {
+    const sw = await navigator.serviceWorker.ready
+    return await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw })
+  } catch {
+    return null
+  }
+}
+
+export { onMessage }
+export { auth, db, messaging, CONFIGURED }
 export type { FBUser }
 export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, fbSignOut, onAuthStateChanged }
-export { doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc }
+export { doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc, increment }

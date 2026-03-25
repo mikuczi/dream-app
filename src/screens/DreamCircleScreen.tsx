@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './DreamCircleScreen.css'
 import { COMMUNITY_USERS, type CommunityUser } from '../data/mockCommunity'
-import type { Dream, CircleInvitation } from '../types/dream'
-import { lookupUserByEmail, sendCircleInvitation } from '../lib/firestore'
+import type { Dream, CircleInvitation, CircleMembership } from '../types/dream'
+import { lookupUserByEmail, sendCircleInvitation, subscribeInvitations, respondToInvitation, addCircleMembership, createNotification } from '../lib/firestore'
+import type { AppNotification } from '../types/dream'
 
 export interface DreamCircle {
   name: string
@@ -33,11 +34,19 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
   const [nameVal,       setNameVal]       = useState(circle.name)
   const [showAdd,       setShowAdd]       = useState(false)
   const [showColors,    setShowColors]    = useState(false)
-  const [pendingIds,    setPendingIds]    = useState<string[]>([])
-  const [emailInput,    setEmailInput]    = useState('')
-  const [emailError,    setEmailError]    = useState('')
-  const [invitations,   setInvitations]   = useState<Invitation[]>([])
-  const [profileUser,   setProfileUser]   = useState<CommunityUser | null>(null)
+  const [pendingIds,      setPendingIds]      = useState<string[]>([])
+  const [emailInput,      setEmailInput]      = useState('')
+  const [emailError,      setEmailError]      = useState('')
+  const [invitations,     setInvitations]     = useState<Invitation[]>([])
+  const [profileUser,     setProfileUser]     = useState<CommunityUser | null>(null)
+  const [receivedInvites, setReceivedInvites] = useState<CircleInvitation[]>([])
+
+  useEffect(() => {
+    if (!currentUid) return
+    return subscribeInvitations(currentUid, invites => {
+      setReceivedInvites(invites.filter(i => i.status === 'pending'))
+    })
+  }, [currentUid])
 
   const members      = COMMUNITY_USERS.filter(u => circle.memberIds.includes(u.id))
   const circleDreams = dreams.filter(d => d.visibility === 'circle')
@@ -85,20 +94,34 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
       return
     }
 
-    // Fall back to Firestore lookup for real users
-    const fsUser = await lookupUserByEmail(email).catch(() => null)
-    if (!fsUser) {
-      setEmailError('User not found')
+    // Firestore lookup for real users
+    let fsUser: { uid: string; name: string; username: string; photoURL?: string } | null = null
+    try {
+      fsUser = await lookupUserByEmail(email)
+    } catch (err) {
+      console.error('[invite] Firestore lookup error:', err)
+      setEmailError('Lookup failed — check your connection and try again')
       return
     }
-    const already = invitations.find(i => i.userId === fsUser.uid)
+
+    if (!fsUser) {
+      setEmailError("No account found with that email. Make sure they've signed in to Reverie.")
+      return
+    }
+    if (fsUser.uid === currentUid) {
+      setEmailError("That's your own account!")
+      return
+    }
+    const already = invitations.find(i => i.userId === fsUser!.uid)
     if (already) {
       setEmailError(already.status === 'pending' ? 'Invitation already sent' : 'Already responded')
       return
     }
+
     if (currentUid) {
+      const inviteId = `inv_${currentUid}_${Date.now()}`
       const invite: CircleInvitation = {
-        id: `inv_${currentUid}_${Date.now()}`,
+        id: inviteId,
         fromUid: currentUid,
         fromName: currentName ?? 'Someone',
         circleId: `${currentUid}_default`,
@@ -106,15 +129,45 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
         status: 'pending',
         createdAt: new Date().toISOString(),
       }
-      sendCircleInvitation(fsUser.uid, invite).catch(() => {})
+      // Write invitation doc to recipient's subcollection
+      sendCircleInvitation(fsUser.uid, invite).catch(err => console.error('[invite] send error:', err))
+      // Also create a bell notification so they see it immediately
+      const notif: AppNotification = {
+        id: `circle_invite_${inviteId}`,
+        type: 'circle_invite',
+        fromUserId: currentUid,
+        fromUserName: currentName ?? 'Someone',
+        circleId: invite.circleId,
+        circleName: circle.name,
+        read: false,
+        createdAt: invite.createdAt,
+      }
+      createNotification(fsUser.uid, notif).catch(err => console.error('[invite] notif error:', err))
     }
-    setInvitations(prev => [...prev, { userId: fsUser.uid, email, status: 'pending' }])
+    setInvitations(prev => [...prev, { userId: fsUser!.uid, email, status: 'pending' }])
     setEmailInput('')
   }
 
   function handleSendInvites() {
     onUpdate({ ...circle, memberIds: pendingIds })
     setShowAdd(false)
+  }
+
+  async function handleInviteResponse(invite: CircleInvitation, accepted: boolean) {
+    if (!currentUid) return
+    setReceivedInvites(prev => prev.filter(i => i.id !== invite.id))
+    await respondToInvitation(currentUid, invite.id, accepted ? 'accepted' : 'rejected').catch(() => {})
+    if (accepted) {
+      const membership: CircleMembership = {
+        circleId: invite.circleId,
+        circleName: invite.circleName,
+        ownerUid: invite.fromUid,
+        ownerName: invite.fromName,
+        color: '#9B8CFF',
+        joinedAt: new Date().toISOString(),
+      }
+      addCircleMembership(currentUid, membership).catch(() => {})
+    }
   }
 
   function setColor(color: string) {
@@ -199,6 +252,31 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
       </div>
 
       <div className="circle-divider" />
+
+      {/* ── Received invitations ─────────────────────────── */}
+      {receivedInvites.length > 0 && (
+        <div className="circle-section">
+          <div className="circle-section-header">
+            <span className="circle-section-title">Circle Invitations</span>
+            <span className="circle-invite-badge">{receivedInvites.length}</span>
+          </div>
+          <div className="circle-received-list">
+            {receivedInvites.map(inv => (
+              <div key={inv.id} className="circle-received-row">
+                <div className="circle-received-info">
+                  <span className="circle-received-from">{inv.fromName}</span>
+                  <span className="circle-received-name">invited you to <em>{inv.circleName}</em></span>
+                </div>
+                <div className="circle-received-actions">
+                  <button className="circle-received-accept" onClick={() => handleInviteResponse(inv, true)}>Accept</button>
+                  <button className="circle-received-reject" onClick={() => handleInviteResponse(inv, false)}>Decline</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="circle-divider" />
+        </div>
+      )}
 
       {/* ── Members ───────────────────────────────────────── */}
       <div className="circle-section">

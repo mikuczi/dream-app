@@ -13,7 +13,7 @@ import type { Dream, FeedPost, DreamCircle, AIChatMessage, DreamPattern, DreamSy
 import {
   db, doc, setDoc, collection, query,
   getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit,
-  getDoc, updateDoc,
+  getDoc, updateDoc, increment,
 } from './firebase'
 import type { Unsubscribe } from 'firebase/firestore'
 
@@ -98,6 +98,38 @@ export async function fetchPublicFeed(count = 30): Promise<FeedPost[]> {
   return snap.docs.map(d => d.data() as FeedPost)
 }
 
+export function subscribePublicFeed(
+  count = 30,
+  onUpdate: (posts: FeedPost[]) => void,
+): Unsubscribe {
+  if (!db) return () => {}
+  const q = query(
+    collection(db, 'feed'),
+    where('visibility', '==', 'public'),
+    orderBy('createdAt', 'desc'),
+    limit(count),
+  )
+  return onSnapshot(q, snap => {
+    onUpdate(snap.docs.map(d => d.data() as FeedPost))
+  })
+}
+
+// Fetch circle posts from a set of member UIDs (including self)
+export async function fetchCircleFeedByMemberIds(memberIds: string[], count = 30): Promise<FeedPost[]> {
+  if (!db || memberIds.length === 0) return []
+  // Firestore 'in' supports max 10 values
+  const ids = memberIds.slice(0, 10)
+  const q = query(
+    collection(db, 'feed'),
+    where('visibility', '==', 'circle'),
+    where('authorId', 'in', ids),
+    orderBy('createdAt', 'desc'),
+    limit(count),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => d.data() as FeedPost)
+}
+
 export async function fetchCircleFeed(circleId: string, count = 30): Promise<FeedPost[]> {
   if (!db) return []
   const q = query(
@@ -127,6 +159,27 @@ export async function fetchCircles(uid: string): Promise<DreamCircle[]> {
   if (!db) return []
   const snap = await getDocs(collection(db, 'users', uid, 'circles'))
   return snap.docs.map(d => d.data() as DreamCircle)
+}
+
+// Each user has one primary circle stored at circles/default
+export async function saveDefaultCircle(
+  uid: string,
+  circle: { name: string; color: string; memberIds: string[] },
+): Promise<void> {
+  if (!db) return
+  await setDoc(doc(db, 'users', uid, 'circles', 'default'), { ...circle, _updatedAt: serverTimestamp() }, { merge: true })
+}
+
+export function subscribeDefaultCircle(
+  uid: string,
+  onUpdate: (circle: { name: string; color: string; memberIds: string[] }) => void,
+): Unsubscribe {
+  if (!db) return () => {}
+  return onSnapshot(doc(db, 'users', uid, 'circles', 'default'), snap => {
+    if (!snap.exists()) return
+    const d = snap.data()
+    onUpdate({ name: d.name ?? 'Inner Circle', color: d.color ?? '#9B8CFF', memberIds: d.memberIds ?? [] })
+  })
 }
 
 // ── AI chat history ───────────────────────────────────────
@@ -220,11 +273,14 @@ export async function addComment(postId: string, comment: Comment): Promise<void
   await setDoc(doc(db, 'feed', postId, 'comments', comment.id), {
     ...comment, _updatedAt: serverTimestamp(),
   })
+  // Keep denormalized count in sync
+  await updateDoc(doc(db, 'feed', postId), { commentCount: increment(1) }).catch(() => {})
 }
 
 export async function deleteComment(postId: string, commentId: string): Promise<void> {
   if (!db) return
   await deleteDoc(doc(db, 'feed', postId, 'comments', commentId))
+  await updateDoc(doc(db, 'feed', postId), { commentCount: increment(-1) }).catch(() => {})
 }
 
 export function subscribeComments(postId: string, onUpdate: (comments: Comment[]) => void): Unsubscribe {
@@ -247,6 +303,8 @@ export async function setLike(postId: string, uid: string, liked: boolean): Prom
   } else {
     await deleteDoc(doc(db, 'feed', postId, 'likes', uid))
   }
+  // Keep denormalized count in sync
+  await updateDoc(doc(db, 'feed', postId), { likeCount: increment(liked ? 1 : -1) }).catch(() => {})
 }
 
 export async function fetchIsLiked(postId: string, uid: string): Promise<boolean> {
@@ -296,6 +354,25 @@ export async function clearNotificationsCollection(uid: string): Promise<void> {
   await Promise.all(snap.docs.map(d => deleteDoc(d.ref)))
 }
 
+// ── Email whitelist ───────────────────────────────────────
+// Create a Firestore document at config/whitelist with field:
+//   emails: ["user@example.com", ...]
+// If the document doesn't exist or emails is empty, ALL users are allowed.
+
+export async function checkWhitelisted(email: string): Promise<boolean> {
+  if (!db) return true // if Firestore not configured, allow everyone
+  try {
+    const snap = await getDoc(doc(db, 'config', 'whitelist'))
+    if (!snap.exists()) return true // no whitelist configured → open access
+    const data = snap.data()
+    const emails: string[] = data.emails ?? []
+    if (emails.length === 0) return true // empty list → open access
+    return emails.map(e => e.toLowerCase().trim()).includes(email.toLowerCase().trim())
+  } catch {
+    return true // on error (e.g. rules not set), allow to avoid lockouts
+  }
+}
+
 // ── User discovery ────────────────────────────────────────
 // Requires Firestore indexes on email and username fields
 
@@ -303,7 +380,10 @@ export async function lookupUserByEmail(
   email: string,
 ): Promise<{ uid: string; name: string; username: string; photoURL?: string } | null> {
   if (!db) return null
-  const q = query(collection(db, 'users'), where('email', '==', email), limit(1))
+  // NOTE: requires a single-field index on users.email (created automatically by Firestore)
+  // If this throws a permission error, check your Firestore security rules to allow
+  // authenticated users to query the users collection.
+  const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase().trim()), limit(1))
   const snap = await getDocs(q)
   if (snap.empty) return null
   const d = snap.docs[0]
@@ -382,6 +462,18 @@ export async function fetchCircleMemberships(uid: string): Promise<CircleMembers
   if (!db) return []
   const snap = await getDocs(collection(db, 'users', uid, 'circleMemberships'))
   return snap.docs.map(d => d.data() as CircleMembership)
+}
+
+// ── FCM tokens ────────────────────────────────────────────
+//   users/{uid}/fcmTokens/{token}
+
+export async function saveFcmToken(uid: string, token: string): Promise<void> {
+  if (!db) return
+  await setDoc(doc(db, 'users', uid, 'fcmTokens', token), {
+    token,
+    createdAt: new Date().toISOString(),
+    _updatedAt: serverTimestamp(),
+  })
 }
 
 // ── Personalized feed ─────────────────────────────────────

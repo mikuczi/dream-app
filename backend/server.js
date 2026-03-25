@@ -151,6 +151,44 @@ app.get('/dreams', async (_req, res) => {
   res.json(await getAllDreams())
 })
 
+// ── Stripe checkout ───────────────────────────────────────
+// Requires: STRIPE_SECRET_KEY in env
+// Returns a Stripe Checkout session URL for the given tier.
+app.post('/create-checkout-session', async (req, res) => {
+  const { tier, userId } = req.body ?? {}
+  if (!tier || !userId) return res.status(400).json({ error: 'tier and userId required' })
+
+  const stripeKey = process.env.STRIPE_SECRET_KEY
+  if (!stripeKey) return res.status(503).json({ error: 'Stripe not configured' })
+
+  const Stripe = (await import('stripe')).default
+  const stripe = new Stripe(stripeKey)
+
+  const PRICE_IDS = {
+    premium: process.env.STRIPE_PRICE_PREMIUM,
+    ai:      process.env.STRIPE_PRICE_AI,
+  }
+  const priceId = PRICE_IDS[tier]
+  if (!priceId) return res.status(400).json({ error: 'Unknown tier' })
+
+  const frontendUrl = process.env.FRONTEND_URL ?? 'https://speakwithdreams.vercel.app'
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode:                 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${frontendUrl}/?checkout=success`,
+      cancel_url:  `${frontendUrl}/?checkout=cancel`,
+      metadata: { userId, tier },
+    })
+    res.json({ url: session.url })
+  } catch (err) {
+    console.error('[stripe] checkout error:', err)
+    res.status(500).json({ error: 'Failed to create checkout session' })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`[server] listening on http://localhost:${PORT}`)
 })

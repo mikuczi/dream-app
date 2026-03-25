@@ -55,6 +55,10 @@
   width: 600%; /* 6 slides */
 }
 
+.ob-slides-7 {
+  width: 700%; /* 7 slides */
+}
+
 .onboarding-slide {
   width: 20%; /* 1/5 of track */
   height: 100%;
@@ -70,6 +74,10 @@
 
 .ob-slides-6 .onboarding-slide {
   width: 16.6667%; /* 1/6 of track */
+}
+
+.ob-slides-7 .onboarding-slide {
+  width: 14.2857%; /* 1/7 of track */
 }
 
 /* ── Visual areas ───────────────────────────────────────── */
@@ -880,3 +888,63 @@
 .ob-install-reminder-btn:hover   { background: rgba(155, 140, 255, 0.22); }
 .ob-install-reminder-btn:active  { opacity: 0.8; }
 .ob-install-reminder-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* ── Username slide ─────────────────────────────────────── */
+.ob-slide-username {
+  justify-content: flex-start;
+}
+
+.ob-username-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ob-username-field {
+  display: flex;
+  align-items: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 0 16px;
+  gap: 4px;
+}
+
+.ob-username-at {
+  font-family: var(--font-ui);
+  font-size: 18px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.ob-username-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-ui);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  padding: 16px 0;
+  caret-color: var(--text-primary);
+}
+
+.ob-username-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ob-username-error {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: #e05a6b;
+  margin: 0;
+}
+
+.ob-username-hint {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
+}

@@ -4,6 +4,7 @@ import './PaywallScreen.css'
 interface PaywallScreenProps {
   onClose: () => void
   onSubscribe?: (tier: 'premium' | 'ai') => void
+  userId?: string
 }
 
 const PREMIUM_FEATURES = [
@@ -18,8 +19,38 @@ const AI_FEATURES = [
   { icon: '◉',  text: 'Private Dream Circle' },
 ]
 
-export function PaywallScreen({ onClose, onSubscribe }: PaywallScreenProps) {
-  const [selected, setSelected] = useState<'premium' | 'ai'>('ai')
+export function PaywallScreen({ onClose, onSubscribe, userId }: PaywallScreenProps) {
+  const [selected,  setSelected]  = useState<'premium' | 'ai'>('ai')
+  const [checkingOut, setCheckingOut] = useState(false)
+
+  async function handleCheckout() {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL
+    if (!backendUrl || !userId) {
+      onSubscribe?.(selected)
+      onClose()
+      return
+    }
+    setCheckingOut(true)
+    try {
+      const res = await fetch(`${backendUrl}/create-checkout-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: selected, userId }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        onSubscribe?.(selected)
+        onClose()
+      }
+    } catch {
+      onSubscribe?.(selected)
+      onClose()
+    } finally {
+      setCheckingOut(false)
+    }
+  }
 
   return (
     <div className="paywall-overlay" onClick={onClose}>
@@ -86,9 +117,10 @@ export function PaywallScreen({ onClose, onSubscribe }: PaywallScreenProps) {
         <div className="paywall-cta">
           <button
             className="paywall-subscribe-btn"
-            onClick={() => { onSubscribe?.(selected); onClose() }}
+            onClick={handleCheckout}
+            disabled={checkingOut}
           >
-            Start free 7-day trial →
+            {checkingOut ? 'Redirecting…' : 'Start free 7-day trial →'}
           </button>
           <p className="paywall-legal">
             {selected === 'premium' ? '$4.99' : '$9.99'}/month after trial · Cancel anytime

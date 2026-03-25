@@ -1,4 +1,28 @@
 // ── reverie Service Worker ──────────────────────────────────
+// Firebase Cloud Messaging background handler
+// importScripts is only executed when the FCM SDK is present
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js')
+  importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js')
+  // Firebase config is injected at build time via __FIREBASE_CONFIG__
+  // If not present, FCM background messages are handled by the existing push handler
+  const fbConfig = self.__FIREBASE_CONFIG__
+  if (fbConfig) {
+    firebase.initializeApp(JSON.parse(fbConfig))
+    const messaging = firebase.messaging()
+    messaging.onBackgroundMessage(payload => {
+      const { title = 'reverie', body = 'You have a new notification' } = payload.notification ?? {}
+      self.registration.showNotification(title, {
+        body,
+        icon: '/pwa-192x192.png',
+        badge: '/pwa-64x64.png',
+        tag: payload.data?.tag ?? 'dream-notif',
+        data: payload.data,
+      })
+    })
+  }
+} catch { /* FCM not available or config not injected */ }
+
 const CACHE_SHELL   = 'reverie-shell-v2'
 const CACHE_IMAGES  = 'reverie-images-v2'
 

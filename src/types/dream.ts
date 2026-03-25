@@ -93,6 +93,8 @@ export interface FeedPost {
   inStory: boolean
   storyExpiresAt?: string   // ISO — set to createdAt + 24h when inStory
   createdAt: string
+  likeCount?: number
+  commentCount?: number
 }
 
 // ── AI & Analysis ─────────────────────────────────────────

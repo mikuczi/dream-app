@@ -8,6 +8,7 @@ interface OnboardingResult {
   dialCode?: string
   goals?: string[]
   reminderTime?: string
+  username?: string
 }
 
 interface OnboardingScreenProps {
@@ -16,7 +17,7 @@ interface OnboardingScreenProps {
   installSkipped?: boolean
 }
 
-const TOTAL_SLIDES = 6
+const TOTAL_SLIDES = 7
 
 const GOAL_OPTIONS = [
   { id: 'recall',   icon: '🌙', label: 'Remember more dreams',     sub: 'Capture details before they fade'    },
@@ -42,6 +43,8 @@ const PREMIUM_FEATURES = [
 
 export function OnboardingScreen({ onDone, deferredPrompt, installSkipped }: OnboardingScreenProps) {
   const [currentSlide,      setCurrentSlide]      = useState(0)
+  const [username,          setUsername]          = useState('')
+  const [usernameError,     setUsernameError]     = useState('')
   const [goals,             setGoals]             = useState<string[]>([])
   const [reminderTime,      setReminderTime]      = useState<string | null>(null)
   const [selectedPlatform,  setSelectedPlatform]  = useState<'whatsapp' | 'telegram' | null>(null)
@@ -68,12 +71,23 @@ export function OnboardingScreen({ onDone, deferredPrompt, installSkipped }: Onb
 
   function handleFinish() {
     const data: OnboardingResult = { goals, reminderTime: reminderTime ?? undefined }
+    if (username.trim()) data.username = username.trim().toLowerCase().replace(/\s+/g, '_')
     if (selectedPlatform && phone) {
       data.platform = selectedPlatform
       data.phone    = dialCode + phone
       data.dialCode = dialCode
     }
     onDone(data)
+  }
+
+  function handleUsernameNext() {
+    const val = username.trim()
+    if (val && !/^[a-z0-9_]{2,20}$/.test(val.toLowerCase())) {
+      setUsernameError('2–20 characters, letters/numbers/underscore only')
+      return
+    }
+    setUsernameError('')
+    next()
   }
 
   function handleConnect() {
@@ -111,7 +125,7 @@ export function OnboardingScreen({ onDone, deferredPrompt, installSkipped }: Onb
 
       {/* ── Slides track ─────────────────────────────────── */}
       <div
-        className="onboarding-slides ob-slides-6"
+        className="onboarding-slides ob-slides-7"
         style={{ transform: `translateX(-${currentSlide * pct}%)` }}
       >
 
@@ -133,7 +147,32 @@ export function OnboardingScreen({ onDone, deferredPrompt, installSkipped }: Onb
           </div>
         </div>
 
-        {/* ── Slide 1: Goals ────────────────────────────── */}
+        {/* ── Slide 1: Username ────────────────────────── */}
+        <div className="onboarding-slide ob-slide-username">
+          <div className="ob-text-block ob-text-left">
+            <h2 className="ob-heading">Choose your<br/>dream name.</h2>
+            <p className="ob-sub">This is how others will find you in the community.</p>
+          </div>
+          <div className="ob-username-wrap">
+            <div className="ob-username-field">
+              <span className="ob-username-at">@</span>
+              <input
+                className="ob-username-input"
+                placeholder="yourname"
+                value={username}
+                onChange={e => { setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')); setUsernameError('') }}
+                maxLength={20}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </div>
+            {usernameError && <p className="ob-username-error">{usernameError}</p>}
+            <p className="ob-username-hint">Letters, numbers, underscores · 2–20 characters</p>
+          </div>
+          <button className="ob-skip-link" onClick={() => { setUsernameError(''); next() }}>Skip for now</button>
+        </div>
+
         <div className="onboarding-slide ob-slide-goals">
           <div className="ob-text-block ob-text-left">
             <h2 className="ob-heading">What draws you<br/>to dreaming?</h2>
@@ -319,7 +358,7 @@ export function OnboardingScreen({ onDone, deferredPrompt, installSkipped }: Onb
       {/* ── Bottom nav: Next + Dots ───────────────────────── */}
       <div className="onboarding-bottom-nav">
         {!isLast && (
-          <button className="ob-next-btn" onClick={next}>Next →</button>
+          <button className="ob-next-btn" onClick={currentSlide === 1 ? handleUsernameNext : next}>Next →</button>
         )}
         <div className="onboarding-dots">
           {Array.from({ length: TOTAL_SLIDES }, (_, i) => (

@@ -1,43 +1,50 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useDreams } from './hooks/useDreams'
 import { getZodiacSign } from './utils/astro'
 import { useFirebaseAuth } from './hooks/useFirebaseAuth'
 import {
-  saveUserProfile, saveFeedPost,
+  saveUserProfile, saveFeedPost, removeFeedPost, checkWhitelisted,
   subscribeNotifications, markAllNotificationsRead, clearNotificationsCollection,
-  subscribeFollowing, followUser, unfollowUser, createNotification,
+  subscribeFollowing, followUser, unfollowUser, createNotification, saveFcmToken,
+  saveDefaultCircle, subscribeDefaultCircle,
 } from './lib/firestore'
+import { getFcmToken } from './lib/firebase'
 import type { AppNotification } from './types/dream'
 import { analyzeConnections } from './utils/dreamConnections'
 
-import { PaywallScreen }         from './screens/PaywallScreen'
-import { DailyLimitPaywall }    from './screens/DailyLimitPaywall'
+// Eagerly loaded (needed for auth flow)
 import { LoginScreen }          from './screens/LoginScreen'
 import { OnboardingScreen }     from './screens/OnboardingScreen'
-import { RecordingScreen }      from './screens/RecordingScreen'
-import { LogScreen }            from './screens/LogScreen'
-import { JournalScreen }        from './screens/JournalScreen'
-import { GalleryScreen }        from './screens/GalleryScreen'
-import { MySymbolsScreen }      from './screens/MySymbolsScreen'
-import { MyCharactersScreen }   from './screens/MyCharactersScreen'
-import { MyPlacesScreen }       from './screens/MyPlacesScreen'
-import { CollectionsScreen }    from './screens/CollectionsScreen'
-import { DashboardScreen }      from './screens/DashboardScreen'
-import { DreamerDigestScreen }  from './screens/DreamerDigestScreen'
-import { DraftsScreen }         from './screens/DraftsScreen'
-import { BookmarksScreen }      from './screens/BookmarksScreen'
-import { InsightsScreen }       from './screens/InsightsScreen'
-import { AskDreamsScreen }      from './screens/AskDreamsScreen'
-import { LibraryScreen }        from './screens/LibraryScreen'
-import { MeScreen }             from './screens/MeScreen'
-import { SocialScreen }         from './screens/SocialScreen'
-import { DreamCircleScreen, type DreamCircle } from './screens/DreamCircleScreen'
-import { DreamConstellationScreen } from './screens/DreamConstellationScreen'
-import { DreamDetailScreen }    from './screens/DreamDetailScreen'
-import { WhatsAppScreen }       from './screens/WhatsAppScreen'
-import { SettingsScreen }       from './screens/SettingsScreen'
-import { StoryViewer }          from './screens/StoryViewer'
-import { SearchScreen }         from './screens/SearchScreen'
+import type { DreamCircle }     from './screens/DreamCircleScreen'
+
+// Lazy-loaded screens (split off from main bundle)
+const PaywallScreen          = lazy(() => import('./screens/PaywallScreen').then(m => ({ default: m.PaywallScreen })))
+const DailyLimitPaywall      = lazy(() => import('./screens/DailyLimitPaywall').then(m => ({ default: m.DailyLimitPaywall })))
+const RecordingScreen        = lazy(() => import('./screens/RecordingScreen').then(m => ({ default: m.RecordingScreen })))
+const LogScreen              = lazy(() => import('./screens/LogScreen').then(m => ({ default: m.LogScreen })))
+const JournalScreen          = lazy(() => import('./screens/JournalScreen').then(m => ({ default: m.JournalScreen })))
+const GalleryScreen          = lazy(() => import('./screens/GalleryScreen').then(m => ({ default: m.GalleryScreen })))
+const MySymbolsScreen        = lazy(() => import('./screens/MySymbolsScreen').then(m => ({ default: m.MySymbolsScreen })))
+const MyCharactersScreen     = lazy(() => import('./screens/MyCharactersScreen').then(m => ({ default: m.MyCharactersScreen })))
+const MyPlacesScreen         = lazy(() => import('./screens/MyPlacesScreen').then(m => ({ default: m.MyPlacesScreen })))
+const CollectionsScreen      = lazy(() => import('./screens/CollectionsScreen').then(m => ({ default: m.CollectionsScreen })))
+const DashboardScreen        = lazy(() => import('./screens/DashboardScreen').then(m => ({ default: m.DashboardScreen })))
+const DreamerDigestScreen    = lazy(() => import('./screens/DreamerDigestScreen').then(m => ({ default: m.DreamerDigestScreen })))
+const DraftsScreen           = lazy(() => import('./screens/DraftsScreen').then(m => ({ default: m.DraftsScreen })))
+const BookmarksScreen        = lazy(() => import('./screens/BookmarksScreen').then(m => ({ default: m.BookmarksScreen })))
+const InsightsScreen         = lazy(() => import('./screens/InsightsScreen').then(m => ({ default: m.InsightsScreen })))
+const AskDreamsScreen        = lazy(() => import('./screens/AskDreamsScreen').then(m => ({ default: m.AskDreamsScreen })))
+const LibraryScreen          = lazy(() => import('./screens/LibraryScreen').then(m => ({ default: m.LibraryScreen })))
+const MeScreen               = lazy(() => import('./screens/MeScreen').then(m => ({ default: m.MeScreen })))
+const SocialScreen           = lazy(() => import('./screens/SocialScreen').then(m => ({ default: m.SocialScreen })))
+const DreamConstellationScreen = lazy(() => import('./screens/DreamConstellationScreen').then(m => ({ default: m.DreamConstellationScreen })))
+const DreamDetailScreen      = lazy(() => import('./screens/DreamDetailScreen').then(m => ({ default: m.DreamDetailScreen })))
+const WhatsAppScreen         = lazy(() => import('./screens/WhatsAppScreen').then(m => ({ default: m.WhatsAppScreen })))
+const SettingsScreen         = lazy(() => import('./screens/SettingsScreen').then(m => ({ default: m.SettingsScreen })))
+const StoryViewer            = lazy(() => import('./screens/StoryViewer').then(m => ({ default: m.StoryViewer })))
+const SearchScreen           = lazy(() => import('./screens/SearchScreen').then(m => ({ default: m.SearchScreen })))
+const UserProfileScreen      = lazy(() => import('./screens/UserProfileScreen').then(m => ({ default: m.UserProfileScreen })))
+const DreamCircleScreen      = lazy(() => import('./screens/DreamCircleScreen').then(m => ({ default: m.DreamCircleScreen })))
 import { BottomBar }            from './components/BottomBar'
 import { SideDrawer }           from './components/SideDrawer'
 import type { ActiveView }      from './components/BottomBar'
@@ -46,15 +53,20 @@ import { getEarnedBadgeIds, BADGES, type BadgeFlags } from './data/badges'
 import { STORY_DREAMS, COMMUNITY_USERS } from './data/mockCommunity'
 
 const KEY_USER              = 'dj_user'
-const KEY_ONBOARDED         = 'dj_onboarded'
+const KEY_ONBOARDED         = 'dj_onboarded' // legacy key — new code uses per-user key below
+function onboardedKey(uid: string) { return `dj_onboarded_${uid}` }
 const KEY_SEEN_BADGES       = 'dj_seen_badges'
 const KEY_CHECKIN_DATE      = 'dj_checkin_date'
-const KEY_DAILY_RECORDINGS  = 'dj_daily_recordings'
-const FREE_DAILY_LIMIT      = 3
+const FREE_DAILY_LIMIT      = 999 // TODO: restore to 3 before launch
 
-function getTodayRecordings(): { date: string; count: number } {
+// Per-user recording limit — each account gets its own daily counter
+function recordingsKey(uid?: string | null) {
+  return uid ? `dj_daily_recordings_${uid}` : 'dj_daily_recordings'
+}
+
+function getTodayRecordings(uid?: string | null): { date: string; count: number } {
   try {
-    const raw = localStorage.getItem(KEY_DAILY_RECORDINGS)
+    const raw = localStorage.getItem(recordingsKey(uid))
     if (raw) {
       const parsed = JSON.parse(raw)
       if (parsed.date === new Date().toDateString()) return parsed
@@ -63,10 +75,10 @@ function getTodayRecordings(): { date: string; count: number } {
   return { date: new Date().toDateString(), count: 0 }
 }
 
-function incrementTodayRecordings(): number {
-  const current = getTodayRecordings()
+function incrementTodayRecordings(uid?: string | null): number {
+  const current = getTodayRecordings(uid)
   const updated = { date: current.date, count: current.count + 1 }
-  localStorage.setItem(KEY_DAILY_RECORDINGS, JSON.stringify(updated))
+  localStorage.setItem(recordingsKey(uid), JSON.stringify(updated))
   return updated.count
 }
 
@@ -75,7 +87,7 @@ function loadUser(): User | null {
   catch { return null }
 }
 
-type AppState = 'login' | 'onboarding' | 'app'
+type AppState = 'login' | 'onboarding' | 'app' | 'blocked'
 type Overlay  = 'recording' | 'log' | 'settings' | 'whatsapp' | 'dreamdetail' | null
 
 
@@ -115,6 +127,7 @@ export function App() {
   const [notifications,     setNotifications]     = useState<{ id: string; text: string; time: string; read: boolean; dreamId?: string }[]>([])
   const [saveToast,         setSaveToast]         = useState('')
   const [followingSet,      setFollowingSet]      = useState<Set<string>>(new Set())
+  const [profileUid,        setProfileUid]        = useState<string | null>(null)
   const seenConnectionIds = useRef<Set<string>>(new Set())
 
   // ── Capture PWA install prompt ────────────────────────
@@ -156,6 +169,15 @@ export function App() {
   useEffect(() => {
     if (!fbUser) return
     return subscribeFollowing(fbUser.uid, uids => setFollowingSet(new Set(uids)))
+  }, [fbUser])
+
+  // ── Circle real-time sync ──────────────────────────────
+  useEffect(() => {
+    if (!fbUser) return
+    return subscribeDefaultCircle(fbUser.uid, c => {
+      setCircle(c)
+      if (c.memberIds.length > 0) setBadgeFlags(f => ({ ...f, createdCircle: true }))
+    })
   }, [fbUser])
 
   // ── Dream connections → notifications ─────────────────
@@ -221,14 +243,51 @@ export function App() {
         createdAt:    existing?.createdAt ?? new Date().toISOString(),
         photoURL:     avatarUrl ?? fbUser.photoURL ?? undefined,
       }
-      localStorage.setItem(KEY_USER, JSON.stringify(merged))
-      setUser(merged)
-      saveUserProfile(fbUser.uid, { name: merged.name, email: merged.email, zodiacSign: merged.zodiacSign }).catch(() => {})
-      if (!localStorage.getItem(KEY_ONBOARDED)) {
-        setAppState('onboarding')
-      } else {
-        setAppState('app')
-      }
+      // Check email whitelist before granting access
+      checkWhitelisted(merged.email).then(allowed => {
+        if (!allowed) {
+          fbSignOut().catch(() => {})
+          setAppState('blocked')
+          return
+        }
+        localStorage.setItem(KEY_USER, JSON.stringify(merged))
+        setUser(merged)
+        saveUserProfile(fbUser.uid, {
+          name: merged.name,
+          email: merged.email.toLowerCase(),
+          username: merged.username,
+          zodiacSign: merged.zodiacSign,
+          photoURL: merged.photoURL ?? null,
+        }).catch(() => {})
+        // Register FCM token for push notifications (non-blocking)
+        getFcmToken().then(token => {
+          if (token) saveFcmToken(fbUser.uid, token).catch(() => {})
+        }).catch(() => {})
+        // Check per-user key first, fall back to legacy key for existing users
+        const hasOnboarded = localStorage.getItem(onboardedKey(fbUser.uid)) || localStorage.getItem(KEY_ONBOARDED)
+        if (!hasOnboarded) {
+          setAppState('onboarding')
+        } else {
+          // Migrate legacy key to per-user key
+          if (!localStorage.getItem(onboardedKey(fbUser.uid))) {
+            localStorage.setItem(onboardedKey(fbUser.uid), '1')
+          }
+          setAppState('app')
+        }
+      }).catch(() => {
+        // If whitelist check fails, allow access (fail open)
+        localStorage.setItem(KEY_USER, JSON.stringify(merged))
+        setUser(merged)
+        const hasOnboarded = localStorage.getItem(onboardedKey(fbUser.uid)) || localStorage.getItem(KEY_ONBOARDED)
+        if (!hasOnboarded) {
+          setAppState('onboarding')
+        } else {
+          if (!localStorage.getItem(onboardedKey(fbUser.uid))) {
+            localStorage.setItem(onboardedKey(fbUser.uid), '1')
+          }
+          setAppState('app')
+        }
+      })
     } else if (fbStatus === 'signed-out') {
       if (configured) {
         localStorage.removeItem(KEY_USER)
@@ -237,6 +296,8 @@ export function App() {
         // KEY_ONBOARDED is only cleared by handleSignOut (explicit sign-out).
         setUser(null)
         setAppState('login')
+        // Clear all user-specific state so it doesn't bleed into the next account
+        clearUserState()
       }
     }
   }, [fbUser, fbStatus])
@@ -281,8 +342,15 @@ export function App() {
     }
   }
 
-  function handleOnboardingDone(data?: { platform?: 'whatsapp' | 'telegram'; phone?: string; dialCode?: string }) {
-    localStorage.setItem(KEY_ONBOARDED, '1')
+  function handleOnboardingDone(data?: { platform?: 'whatsapp' | 'telegram'; phone?: string; dialCode?: string; username?: string }) {
+    localStorage.setItem(KEY_ONBOARDED, '1') // legacy key
+    if (fbUser) localStorage.setItem(onboardedKey(fbUser.uid), '1')
+    if (data?.username && fbUser) {
+      const updated = { ...user, username: data.username } as User
+      localStorage.setItem(KEY_USER, JSON.stringify(updated))
+      setUser(updated)
+      saveUserProfile(fbUser.uid, { username: data.username }).catch(() => {})
+    }
     if (data?.phone) {
       const backendUrl = import.meta.env.VITE_BACKEND_URL
       if (backendUrl) {
@@ -303,12 +371,10 @@ export function App() {
 
   // ── Recording ─────────────────────────────────────────
   function openRecording() {
-    const { count } = getTodayRecordings()
-    if (count >= FREE_DAILY_LIMIT) {
-      setDailyLimitOpen(true)
-    } else {
-      setOverlay('recording')
-    }
+    // TODO: re-enable limit check before launch
+    // const { count } = getTodayRecordings(fbUser?.uid)
+    // if (count >= FREE_DAILY_LIMIT) { setDailyLimitOpen(true); return }
+    setOverlay('recording')
   }
 
   function handleRecordingDone(transcript: string) {
@@ -318,7 +384,7 @@ export function App() {
 
   function handleLogSave(dream: Dream) {
     addDream(dream)
-    incrementTodayRecordings()
+    incrementTodayRecordings(fbUser?.uid)
     setOverlay(null)
 
     // Add to story if flagged or if it's the user's first dream
@@ -369,6 +435,29 @@ export function App() {
   function handleSetVisibility(id: string, visibility: DreamVisibility) {
     updateDream(id, { visibility, isPrivate: visibility === 'private' })
     if (focusDream?.id === id) setFocusDream({ ...focusDream, visibility, isPrivate: visibility === 'private' })
+    // Sync with feed collection
+    if (!fbUser) return
+    const dream = dreams.find(d => d.id === id)
+    if (!dream) return
+    if (visibility === 'private') {
+      removeFeedPost(id).catch(() => {})
+    } else {
+      saveFeedPost({
+        id: dream.id,
+        authorId: fbUser.uid,
+        authorName: fbUser.displayName ?? user?.name ?? 'Dreamer',
+        authorPhoto: fbUser.photoURL ?? undefined,
+        dreamId: dream.id,
+        title: dream.title,
+        transcript: dream.transcript,
+        mood: dream.mood,
+        tags: dream.tags,
+        visibility: visibility as 'circle' | 'public',
+        circleId: dream.circleId,
+        inStory: !!dream.inStory,
+        createdAt: dream.createdAt,
+      }).catch(() => {})
+    }
   }
 
   function handleDeleteDream(id: string) {
@@ -384,6 +473,23 @@ export function App() {
   function handleShareToCircle(dream: Dream) {
     updateDream(dream.id, { visibility: 'circle', isPrivate: false })
     if (focusDream?.id === dream.id) setFocusDream({ ...focusDream, visibility: 'circle' })
+    if (fbUser) {
+      saveFeedPost({
+        id: dream.id,
+        authorId: fbUser.uid,
+        authorName: fbUser.displayName ?? user?.name ?? 'Dreamer',
+        authorPhoto: fbUser.photoURL ?? undefined,
+        dreamId: dream.id,
+        title: dream.title,
+        transcript: dream.transcript,
+        mood: dream.mood,
+        tags: dream.tags,
+        visibility: 'circle',
+        circleId: dream.circleId,
+        inStory: !!dream.inStory,
+        createdAt: dream.createdAt,
+      }).catch(() => {})
+    }
   }
 
   function handleBookmarkDream(id: string) {
@@ -400,16 +506,47 @@ export function App() {
   }
 
   // ── Sign out ──────────────────────────────────────────
+  function clearUserState() {
+    setMyStories([])
+    setCircle({ name: 'Inner Circle', color: '#9B8CFF', memberIds: [] })
+    setBadgeFlags({ viewedConstellation: false, createdCircle: false })
+    setStoryIndex(null)
+    setFocusDream(null)
+    setOverlay(null)
+    setProfileUid(null)
+    seenBadgeIds.current = new Set()
+    seenConnectionIds.current = new Set()
+  }
+
   function handleSignOut() {
     fbSignOut().catch(() => {})
     localStorage.removeItem(KEY_USER)
-    localStorage.removeItem(KEY_ONBOARDED)
+    // Do NOT remove onboarding key — it's per-user and survives sign-out intentionally
     setUser(null)
     setActiveView('journal')
     setAppState('login')
+    clearUserState()
   }
 
   // ── Render ────────────────────────────────────────────
+  if (appState === 'blocked') {
+    return (
+      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '32px', textAlign: 'center', flexDirection: 'column', gap: '16px' }}>
+        <span style={{ fontSize: '48px' }}>🌙</span>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '24px', color: 'var(--text-primary)', margin: 0 }}>Access Restricted</h2>
+        <p style={{ fontFamily: 'var(--font-ui)', fontSize: '15px', color: 'var(--text-secondary)', maxWidth: '280px', lineHeight: 1.6, margin: 0 }}>
+          This account is not on the early-access list. Please contact the app admin to request access.
+        </p>
+        <button
+          onClick={() => { fbSignOut().catch(() => {}); setAppState('login') }}
+          style={{ marginTop: '8px', padding: '12px 24px', borderRadius: 'var(--radius-md)', background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', color: 'var(--text-primary)', fontFamily: 'var(--font-ui)', fontSize: '14px', cursor: 'pointer' }}
+        >
+          Sign out
+        </button>
+      </div>
+    )
+  }
+
   if (appState === 'login') {
     return (
       <div className="app-shell">
@@ -437,6 +574,7 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <Suspense fallback={<div className="app-lazy-fallback" />}>
       <div className="tab-content">
         {activeView === 'journal'     && <JournalScreen dreams={dreams} tabMode onOpenDream={handleOpenDream} onAsk={() => setActiveView('ask')} />}
         {activeView === 'gallery'     && <GalleryScreen dreams={dreams} onOpenDream={handleOpenDream} />}
@@ -458,8 +596,23 @@ export function App() {
           />
         )}
         {activeView === 'library'     && <LibraryScreen />}
-        {activeView === 'social'      && <SocialScreen onOpenStory={idx => setStoryIndex(idx)} onAddStory={openRecording} myName={user?.name} myAvatar={avatarUrl ?? user?.photoURL} myStories={myStories} dreams={dreams} circle={circle} onManageCircle={() => setActiveView('circle')} currentUserId={fbUser?.uid} currentUserName={user?.name} followingSet={followingSet} onFollow={handleFollow} />}
-        {activeView === 'circle'      && <DreamCircleScreen circle={circle} dreams={dreams} myName={user?.name} currentUid={fbUser?.uid} currentName={user?.name} onFollowUser={(uid, name) => handleFollow(uid, name, '')} onUpdate={c => { setCircle(c); if (c.memberIds.length > 0) setBadgeFlags(f => ({ ...f, createdCircle: true })) }} onBack={() => setActiveView('social')} />}
+        {activeView === 'social'      && <SocialScreen
+          onOpenStory={idx => setStoryIndex(myStories.length + idx)}
+          onOpenMyStory={() => setStoryIndex(0)}
+          onAddStory={openRecording}
+          myName={user?.name}
+          myAvatar={avatarUrl ?? user?.photoURL}
+          myStories={myStories}
+          dreams={dreams}
+          circle={circle}
+          onManageCircle={() => setActiveView('circle')}
+          currentUserId={fbUser?.uid}
+          currentUserName={user?.name}
+          followingSet={followingSet}
+          onFollow={handleFollow}
+          onViewProfile={uid => setProfileUid(uid)}
+        />}
+        {activeView === 'circle'      && <DreamCircleScreen circle={circle} dreams={dreams} myName={user?.name} currentUid={fbUser?.uid} currentName={user?.name} onFollowUser={(uid, name) => handleFollow(uid, name, '')} onUpdate={c => { setCircle(c); if (fbUser) saveDefaultCircle(fbUser.uid, c).catch(() => {}); if (c.memberIds.length > 0) setBadgeFlags(f => ({ ...f, createdCircle: true })) }} onBack={() => setActiveView('social')} />}
         {activeView === 'me'          && (
           <MeScreen
             user={user}
@@ -471,7 +624,7 @@ export function App() {
             onSettings={() => setOverlay('settings')}
             onPaywall={() => setPaywallOpen(true)}
             badgeFlags={badgeFlags}
-            todayRecordings={getTodayRecordings().count}
+            todayRecordings={getTodayRecordings(fbUser?.uid).count}
             dailyLimit={FREE_DAILY_LIMIT}
             circleCount={circle.memberIds.length}
             onAvatarUpload={handleAvatarUpload}
@@ -548,15 +701,52 @@ export function App() {
         </div>
       )}
 
-      {storyIndex !== null && (
-        <StoryViewer
-          stories={STORY_DREAMS}
-          users={COMMUNITY_USERS}
-          startIndex={storyIndex}
-          onClose={() => setStoryIndex(null)}
-          onViewed={() => {}}
+      {profileUid && (
+        <UserProfileScreen
+          targetUid={profileUid}
+          currentUserId={fbUser?.uid}
+          followingSet={followingSet}
+          onFollow={handleFollow}
+          onBack={() => setProfileUid(null)}
         />
       )}
+
+      {storyIndex !== null && (() => {
+        // Build a CommunityUser entry for the current user so StoryViewer can render their name/avatar
+        const myUserId = fbUser?.uid ?? 'me'
+        const myUserEntry = {
+          id: myUserId,
+          name: user?.name ?? 'You',
+          initials: (user?.name ?? 'ME').slice(0, 2).toUpperCase(),
+          zodiac: user?.zodiacSign ?? '',
+          viewed: false,
+          avatar: avatarUrl ?? user?.photoURL ?? undefined,
+        }
+        // Convert myStories Dreams → CommunityDream so they work in StoryViewer
+        const myStoriesMapped = myStories.map(d => ({
+          id: d.id,
+          userId: myUserId,
+          title: d.title,
+          text: d.transcript.slice(0, 180) + (d.transcript.length > 180 ? '…' : ''),
+          visual: d.artwork ?? 'radial-gradient(ellipse at 50% 30%, #1a1030 0%, #080510 100%)',
+          mood: d.mood,
+          tags: d.tags.slice(0, 3),
+          likes: 0, comments: 0, saves: 0,
+          timeAgo: 'Just now',
+          liked: false, saved: false,
+        }))
+        const allStories = [...myStoriesMapped, ...STORY_DREAMS]
+        const allUsers   = [myUserEntry, ...COMMUNITY_USERS]
+        return (
+          <StoryViewer
+            stories={allStories}
+            users={allUsers}
+            startIndex={storyIndex}
+            onClose={() => setStoryIndex(null)}
+            onViewed={() => {}}
+          />
+        )
+      })()}
 
       {/* ── Bell notification panel ──────────────────── */}
       <button
@@ -657,16 +847,17 @@ export function App() {
 
       {/* ── Paywall ───────────────────────────────────── */}
       {paywallOpen && (
-        <PaywallScreen onClose={() => setPaywallOpen(false)} />
+        <PaywallScreen onClose={() => setPaywallOpen(false)} userId={fbUser?.uid} />
       )}
 
       {/* ── Daily limit paywall ───────────────────────── */}
       {dailyLimitOpen && (
         <DailyLimitPaywall
-          usedToday={getTodayRecordings().count}
+          usedToday={getTodayRecordings(fbUser?.uid).count}
           onClose={() => setDailyLimitOpen(false)}
         />
       )}
+      </Suspense>
     </div>
   )
 }
