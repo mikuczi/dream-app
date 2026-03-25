@@ -43,11 +43,18 @@ export function useDreams(uid?: string | null) {
   // ── Firestore real-time sync when signed in ──────────
   useEffect(() => {
     if (!uid) return
+    // active flag prevents stale callbacks from a previous user's subscription
+    // from overwriting the new user's data after sign-out/sign-in
+    let active = true
     const unsub = subscribeDreams(uid, remoteDreams => {
+      if (!active) return
       setDreams(remoteDreams)
       saveLocalForUser(uid, remoteDreams)
     })
-    return unsub
+    return () => {
+      active = false
+      unsub()
+    }
   }, [uid])
 
   const addDream = useCallback((dream: Dream) => {

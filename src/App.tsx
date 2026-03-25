@@ -115,9 +115,7 @@ export function App() {
   const [badgeFlags,        setBadgeFlags]        = useState<BadgeFlags>({ viewedConstellation: false, createdCircle: false })
   const [paywallOpen,       setPaywallOpen]       = useState(false)
   const [dailyLimitOpen,    setDailyLimitOpen]    = useState(false)
-  const [avatarUrl,         setAvatarUrl]         = useState<string | undefined>(() =>
-    localStorage.getItem('dj_avatar') ?? undefined
-  )
+  const [avatarUrl,         setAvatarUrl]         = useState<string | undefined>(undefined)
   const [checkInOpen,       setCheckInOpen]       = useState(false)
   const [newBadge,          setNewBadge]          = useState<{ name: string; icon: string } | null>(null)
   const seenBadgeIds = useRef<Set<string>>(new Set(JSON.parse(localStorage.getItem(KEY_SEEN_BADGES) ?? '[]')))
@@ -231,6 +229,10 @@ export function App() {
   useEffect(() => {
     if (fbStatus === 'loading') return
     if (fbUser) {
+      // Load this user's avatar (per-user key)
+      const savedAvatar = localStorage.getItem(`dj_avatar_${fbUser.uid}`) ?? undefined
+      setAvatarUrl(savedAvatar)
+
       // Build / merge a local User from the Google profile
       const existing = loadUser()
       const merged: User = {
@@ -502,11 +504,12 @@ export function App() {
   // ── Avatar upload ─────────────────────────────────────
   function handleAvatarUpload(dataUrl: string) {
     setAvatarUrl(dataUrl)
-    localStorage.setItem('dj_avatar', dataUrl)
+    if (fbUser) localStorage.setItem(`dj_avatar_${fbUser.uid}`, dataUrl)
   }
 
   // ── Sign out ──────────────────────────────────────────
   function clearUserState() {
+    setAvatarUrl(undefined)
     setMyStories([])
     setCircle({ name: 'Inner Circle', color: '#9B8CFF', memberIds: [] })
     setBadgeFlags({ viewedConstellation: false, createdCircle: false })
