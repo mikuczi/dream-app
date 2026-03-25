@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   auth, CONFIGURED,
-  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, fbSignOut,
+  GoogleAuthProvider, signInWithRedirect, getRedirectResult, fbSignOut,
   onAuthStateChanged, type FBUser,
 } from '../lib/firebase'
 
@@ -24,8 +24,10 @@ export function useFirebaseAuth(): FirebaseAuthState {
       setStatus('signed-out')
       return
     }
-    // Pick up any result from a redirect-fallback sign-in
-    getRedirectResult(auth).catch(() => {})
+    // Pick up the result from the Google redirect sign-in
+    getRedirectResult(auth).catch(err => {
+      console.error('[auth] getRedirectResult error:', err)
+    })
 
     const unsub = onAuthStateChanged(auth, user => {
       setFbUser(user ?? null)
@@ -38,14 +40,7 @@ export function useFirebaseAuth(): FirebaseAuthState {
     if (!auth) return
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
-    try {
-      await signInWithPopup(auth, provider)
-    } catch (err: any) {
-      if (err?.code === 'auth/popup-blocked') {
-        await signInWithRedirect(auth, provider)
-      }
-      // auth/popup-closed-by-user — user dismissed, do nothing
-    }
+    await signInWithRedirect(auth, provider)
   }
 
   async function signOut() {

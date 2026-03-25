@@ -260,7 +260,7 @@ export function App() {
           username: merged.username,
           zodiacSign: merged.zodiacSign,
           photoURL: merged.photoURL ?? null,
-        }).catch(() => {})
+        }).catch(err => console.error('[profile] saveUserProfile failed:', err))
         // Register FCM token for push notifications (non-blocking)
         getFcmToken().then(token => {
           if (token) saveFcmToken(fbUser.uid, token).catch(() => {})
