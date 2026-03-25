@@ -383,8 +383,11 @@ export async function lookupUserByEmail(
   // NOTE: requires a single-field index on users.email (created automatically by Firestore)
   // If this throws a permission error, check your Firestore security rules to allow
   // authenticated users to query the users collection.
-  const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase().trim()), limit(1))
+  const normalized = email.toLowerCase().trim()
+  console.log('[lookup] searching email:', normalized)
+  const q = query(collection(db, 'users'), where('email', '==', normalized), limit(1))
   const snap = await getDocs(q)
+  console.log('[lookup] result count:', snap.size, snap.docs.map(d => d.id))
   if (snap.empty) return null
   const d = snap.docs[0]
   return { uid: d.id, name: d.data().name, username: d.data().username ?? '', photoURL: d.data().photoURL }

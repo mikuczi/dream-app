@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   auth, CONFIGURED,
-  GoogleAuthProvider, signInWithRedirect, getRedirectResult, fbSignOut,
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, fbSignOut,
   onAuthStateChanged, type FBUser,
 } from '../lib/firebase'
 
@@ -40,7 +40,13 @@ export function useFirebaseAuth(): FirebaseAuthState {
     if (!auth) return
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
-    await signInWithRedirect(auth, provider)
+    try {
+      await signInWithPopup(auth, provider)
+    } catch (err: any) {
+      if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/popup-closed-by-user') {
+        await signInWithRedirect(auth, provider)
+      }
+    }
   }
 
   async function signOut() {
