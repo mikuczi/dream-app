@@ -46,10 +46,21 @@ export function useDreams(uid?: string | null) {
     // active flag prevents stale callbacks from a previous user's subscription
     // from overwriting the new user's data after sign-out/sign-in
     let active = true
+    let hasReceivedData = false
     const unsub = subscribeDreams(uid, remoteDreams => {
       if (!active) return
       setDreams(remoteDreams)
-      saveLocalForUser(uid, remoteDreams)
+      // Only overwrite localStorage once Firestore has confirmed non-empty data,
+      // OR once it has confirmed the user genuinely has zero dreams (after first real fetch)
+      if (remoteDreams.length > 0) {
+        hasReceivedData = true
+        saveLocalForUser(uid, remoteDreams)
+      } else if (hasReceivedData) {
+        // User deleted all their dreams — clear cache
+        saveLocalForUser(uid, [])
+      }
+      // If remoteDreams is empty and we haven't received real data yet,
+      // don't overwrite localStorage — Firestore may still be loading
     })
     return () => {
       active = false

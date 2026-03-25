@@ -152,6 +152,13 @@ export function LogScreen({ transcript, onSave, onBack }: LogScreenProps) {
   const [inStory,    setInStory]    = useState(true)
   const [inFeed,     setInFeed]     = useState(false)
 
+  function handleSetVisibility(v: DreamVisibility) {
+    setVisibility(v)
+    // When making public/circle, automatically add to feed
+    if (v !== 'private') setInFeed(true)
+    else setInFeed(false)
+  }
+
   const summary = generateSummary(transcript)
 
   function toggleSymbol(s: string) {
@@ -314,10 +321,7 @@ export function LogScreen({ transcript, onSave, onBack }: LogScreenProps) {
               <button
                 key={value}
                 className={`log-vis-card ${visibility === value ? 'selected' : ''}`}
-                onClick={() => {
-                  setVisibility(value)
-                  if (value === 'private') setInFeed(false)
-                }}
+                onClick={() => handleSetVisibility(value)}
               >
                 <span className="log-vis-icon">{icon}</span>
                 <span className="log-vis-label">{label}</span>
