@@ -5,7 +5,7 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut as fbSignOut, onAuthStateChanged, type User as FBUser } from 'firebase/auth'
 // signInWithPopup kept for potential future use
-import { getFirestore, doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit } from 'firebase/firestore'
+import { getFirestore, doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FB_API_KEY            ?? '',
@@ -30,4 +30,4 @@ try {
 export { auth, db, CONFIGURED }
 export type { FBUser }
 export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, fbSignOut, onAuthStateChanged }
-export { doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit }
+export { doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc }

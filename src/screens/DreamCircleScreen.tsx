@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import './DreamCircleScreen.css'
 import { COMMUNITY_USERS, type CommunityUser } from '../data/mockCommunity'
-import type { Dream } from '../types/dream'
+import type { Dream, CircleInvitation } from '../types/dream'
+import { lookupUserByEmail, sendCircleInvitation } from '../lib/firestore'
 
 export interface DreamCircle {
   name: string
@@ -16,6 +17,9 @@ interface DreamCircleScreenProps {
   circle: DreamCircle
   dreams: Dream[]
   myName?: string
+  currentUid?: string
+  currentName?: string
+  onFollowUser?: (uid: string, name: string) => void
   onUpdate: (circle: DreamCircle) => void
   onBack: () => void
 }
@@ -24,7 +28,7 @@ const CIRCLE_COLORS = [
   '#9B8CFF', '#7bb3f4', '#c97bf4', '#f4c97b', '#7bf4c4',
 ]
 
-export function DreamCircleScreen({ circle, dreams, myName, onUpdate, onBack }: DreamCircleScreenProps) {
+export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentName, onFollowUser, onUpdate, onBack }: DreamCircleScreenProps) {
   const [editingName,   setEditingName]   = useState(false)
   const [nameVal,       setNameVal]       = useState(circle.name)
   const [showAdd,       setShowAdd]       = useState(false)
@@ -63,21 +67,48 @@ export function DreamCircleScreen({ circle, dreams, myName, onUpdate, onBack }: 
     )
   }
 
-  function handleEmailInvite() {
+  async function handleEmailInvite() {
     const email = emailInput.trim().toLowerCase()
     setEmailError('')
     if (!email) return
-    const found = COMMUNITY_USERS.find(u => u.email?.toLowerCase() === email)
-    if (!found) {
+
+    // Check mock community first (local demo users)
+    const mockFound = COMMUNITY_USERS.find(u => u.email?.toLowerCase() === email)
+    if (mockFound) {
+      const already = invitations.find(i => i.userId === mockFound.id)
+      if (already) {
+        setEmailError(already.status === 'pending' ? 'Invitation already sent' : 'Already responded')
+        return
+      }
+      setInvitations(prev => [...prev, { userId: mockFound.id, email, status: 'pending' }])
+      setEmailInput('')
+      return
+    }
+
+    // Fall back to Firestore lookup for real users
+    const fsUser = await lookupUserByEmail(email).catch(() => null)
+    if (!fsUser) {
       setEmailError('User not found')
       return
     }
-    const already = invitations.find(i => i.userId === found.id)
+    const already = invitations.find(i => i.userId === fsUser.uid)
     if (already) {
       setEmailError(already.status === 'pending' ? 'Invitation already sent' : 'Already responded')
       return
     }
-    setInvitations(prev => [...prev, { userId: found.id, email, status: 'pending' }])
+    if (currentUid) {
+      const invite: CircleInvitation = {
+        id: `inv_${currentUid}_${Date.now()}`,
+        fromUid: currentUid,
+        fromName: currentName ?? 'Someone',
+        circleId: `${currentUid}_default`,
+        circleName: circle.name,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      }
+      sendCircleInvitation(fsUser.uid, invite).catch(() => {})
+    }
+    setInvitations(prev => [...prev, { userId: fsUser.uid, email, status: 'pending' }])
     setEmailInput('')
   }
 
@@ -362,7 +393,7 @@ export function DreamCircleScreen({ circle, dreams, myName, onUpdate, onBack }: 
             <div className="circle-profile-actions">
               <button
                 className="circle-profile-action-btn circle-profile-follow"
-                onClick={() => setProfileUser(null)}
+                onClick={() => { onFollowUser?.(profileUser.id, profileUser.name); setProfileUser(null) }}
               >
                 Follow
               </button>

@@ -2,7 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useDreams } from './hooks/useDreams'
 import { getZodiacSign } from './utils/astro'
 import { useFirebaseAuth } from './hooks/useFirebaseAuth'
-import { saveUserProfile, saveFeedPost } from './lib/firestore'
+import {
+  saveUserProfile, saveFeedPost,
+  subscribeNotifications, markAllNotificationsRead, clearNotificationsCollection,
+  subscribeFollowing, followUser, unfollowUser, createNotification,
+} from './lib/firestore'
+import type { AppNotification } from './types/dream'
 import { analyzeConnections } from './utils/dreamConnections'
 
 import { PaywallScreen }         from './screens/PaywallScreen'
@@ -109,6 +114,7 @@ export function App() {
   const [notifOpen,         setNotifOpen]         = useState(false)
   const [notifications,     setNotifications]     = useState<{ id: string; text: string; time: string; read: boolean; dreamId?: string }[]>([])
   const [saveToast,         setSaveToast]         = useState('')
+  const [followingSet,      setFollowingSet]      = useState<Set<string>>(new Set())
   const seenConnectionIds = useRef<Set<string>>(new Set())
 
   // ── Capture PWA install prompt ────────────────────────
@@ -120,6 +126,32 @@ export function App() {
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
+
+  // ── Firestore notifications subscription ──────────────
+  useEffect(() => {
+    if (!fbUser) return
+    return subscribeNotifications(fbUser.uid, (fsNotifs) => {
+      setNotifications(prev => {
+        const prevIds = new Set(prev.map(n => n.id))
+        const incoming = fsNotifs
+          .filter(n => !prevIds.has(n.id))
+          .map(n => ({
+            id: n.id,
+            text: buildNotifText(n),
+            time: formatNotifTime(n.createdAt),
+            read: n.read,
+            dreamId: n.dreamId,
+          }))
+        return incoming.length ? [...incoming, ...prev] : prev
+      })
+    })
+  }, [fbUser])
+
+  // ── Follow graph subscription ──────────────────────────
+  useEffect(() => {
+    if (!fbUser) return
+    return subscribeFollowing(fbUser.uid, uids => setFollowingSet(new Set(uids)))
+  }, [fbUser])
 
   // ── Dream connections → notifications ─────────────────
   useEffect(() => {
@@ -204,6 +236,45 @@ export function App() {
     }
   }, [fbUser, fbStatus])
 
+
+  function buildNotifText(n: AppNotification): string {
+    switch (n.type) {
+      case 'comment': return `${n.fromUserName} commented on your dream${n.dreamTitle ? ` "${n.dreamTitle}"` : ''}`
+      case 'like':    return `${n.fromUserName} liked your dream${n.dreamTitle ? ` "${n.dreamTitle}"` : ''}`
+      case 'follow':  return `${n.fromUserName} started following you`
+      case 'circle_invite': return `${n.fromUserName} invited you to ${n.circleName ?? 'a circle'}`
+      default: return n.fromUserName
+    }
+  }
+
+  function formatNotifTime(isoDate: string): string {
+    const mins = Math.floor((Date.now() - new Date(isoDate).getTime()) / 60000)
+    if (mins < 1)  return 'Just now'
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    return `${Math.floor(hours / 24)}d ago`
+  }
+
+  function handleFollow(targetUid: string, targetName: string, targetUsername: string) {
+    if (!fbUser || !user) return
+    if (followingSet.has(targetUid)) {
+      setFollowingSet(prev => { const s = new Set(prev); s.delete(targetUid); return s })
+      unfollowUser(fbUser.uid, targetUid).catch(() => {})
+    } else {
+      setFollowingSet(prev => new Set([...prev, targetUid]))
+      followUser(fbUser.uid, user.name, { uid: targetUid, name: targetName, username: targetUsername }).catch(() => {})
+      createNotification(targetUid, {
+        id: `follow_${fbUser.uid}_${Date.now()}`,
+        type: 'follow',
+        fromUserId: fbUser.uid,
+        fromUserName: user.name,
+        fromUserPhoto: avatarUrl ?? fbUser.photoURL ?? undefined,
+        read: false,
+        createdAt: new Date().toISOString(),
+      }).catch(() => {})
+    }
+  }
 
   function handleOnboardingDone(data?: { platform?: 'whatsapp' | 'telegram'; phone?: string; dialCode?: string }) {
     localStorage.setItem(KEY_ONBOARDED, '1')
@@ -382,8 +453,8 @@ export function App() {
           />
         )}
         {activeView === 'library'     && <LibraryScreen />}
-        {activeView === 'social'      && <SocialScreen onOpenStory={idx => setStoryIndex(idx)} onAddStory={openRecording} myName={user?.name} myAvatar={avatarUrl ?? user?.photoURL} myStories={myStories} dreams={dreams} circle={circle} onManageCircle={() => setActiveView('circle')} />}
-        {activeView === 'circle'      && <DreamCircleScreen circle={circle} dreams={dreams} myName={user?.name} onUpdate={c => { setCircle(c); if (c.memberIds.length > 0) setBadgeFlags(f => ({ ...f, createdCircle: true })) }} onBack={() => setActiveView('social')} />}
+        {activeView === 'social'      && <SocialScreen onOpenStory={idx => setStoryIndex(idx)} onAddStory={openRecording} myName={user?.name} myAvatar={avatarUrl ?? user?.photoURL} myStories={myStories} dreams={dreams} circle={circle} onManageCircle={() => setActiveView('circle')} currentUserId={fbUser?.uid} currentUserName={user?.name} followingSet={followingSet} onFollow={handleFollow} />}
+        {activeView === 'circle'      && <DreamCircleScreen circle={circle} dreams={dreams} myName={user?.name} currentUid={fbUser?.uid} currentName={user?.name} onFollowUser={(uid, name) => handleFollow(uid, name, '')} onUpdate={c => { setCircle(c); if (c.memberIds.length > 0) setBadgeFlags(f => ({ ...f, createdCircle: true })) }} onBack={() => setActiveView('social')} />}
         {activeView === 'me'          && (
           <MeScreen
             user={user}
@@ -485,7 +556,11 @@ export function App() {
       {/* ── Bell notification panel ──────────────────── */}
       <button
         className={`app-bell-btn ${notifications.some(n => !n.read) ? 'has-unread' : ''}`}
-        onClick={() => { setNotifOpen(v => !v); setNotifications(prev => prev.map(n => ({ ...n, read: true }))) }}
+        onClick={() => {
+          setNotifOpen(v => !v)
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+          if (fbUser) markAllNotificationsRead(fbUser.uid).catch(() => {})
+        }}
         aria-label="Notifications"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -502,7 +577,10 @@ export function App() {
             <div className="app-notif-header">
               <span className="app-notif-title">Notifications</span>
               {notifications.length > 0 && (
-                <button className="app-notif-clear" onClick={() => setNotifications([])}>Clear all</button>
+                <button className="app-notif-clear" onClick={() => {
+                  setNotifications([])
+                  if (fbUser) clearNotificationsCollection(fbUser.uid).catch(() => {})
+                }}>Clear all</button>
               )}
             </div>
             {notifications.length === 0 ? (

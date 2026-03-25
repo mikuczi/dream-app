@@ -91,6 +91,7 @@ export interface FeedPost {
   visibility: 'circle' | 'public'
   circleId?: string
   inStory: boolean
+  storyExpiresAt?: string   // ISO — set to createdAt + 24h when inStory
   createdAt: string
 }
 
@@ -118,6 +119,49 @@ export interface DreamSymbol {
   dreamIds: string[]
   firstSeen: string
   lastSeen: string
+}
+
+// ── Social graph ──────────────────────────────────────────
+
+export interface Follow {
+  targetUid: string
+  targetName: string
+  targetUsername: string
+  targetPhoto?: string
+  createdAt: string
+}
+
+export interface AppNotification {
+  id: string
+  type: 'comment' | 'like' | 'follow' | 'circle_invite'
+  fromUserId: string
+  fromUserName: string
+  fromUserPhoto?: string
+  dreamId?: string
+  dreamTitle?: string
+  circleId?: string
+  circleName?: string
+  read: boolean
+  createdAt: string
+}
+
+export interface CircleInvitation {
+  id: string
+  fromUid: string
+  fromName: string
+  circleId: string
+  circleName: string
+  status: 'pending' | 'accepted' | 'rejected'
+  createdAt: string
+}
+
+export interface CircleMembership {
+  circleId: string
+  circleName: string
+  ownerUid: string
+  ownerName: string
+  color: string
+  joinedAt: string
 }
 
 export interface MoonPhaseInfo {

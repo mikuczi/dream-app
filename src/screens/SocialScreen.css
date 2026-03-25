@@ -624,8 +624,29 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  cursor: pointer;
 }
+
+.feed-detail-follow-btn {
+  margin-left: auto;
+  padding: 6px 14px;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.feed-detail-follow-btn.following {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+.feed-detail-follow-btn:active { background: rgba(255, 255, 255, 0.14); }
 
 .feed-detail-username {
   font-family: var(--font-ui);

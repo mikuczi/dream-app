@@ -9,10 +9,11 @@
 //   users/{uid}/symbols/{id}         — Recurring dream symbols
 //   feed/{postId}                    — Denormalised public/circle posts
 
-import type { Dream, FeedPost, DreamCircle, AIChatMessage, DreamPattern, DreamSymbol } from '../types/dream'
+import type { Dream, FeedPost, DreamCircle, AIChatMessage, DreamPattern, DreamSymbol, Follow, AppNotification, CircleInvitation, CircleMembership, Comment } from '../types/dream'
 import {
   db, doc, setDoc, collection, query,
   getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit,
+  getDoc, updateDoc,
 } from './firebase'
 import type { Unsubscribe } from 'firebase/firestore'
 
@@ -59,7 +60,23 @@ export function subscribeDreams(uid: string, onUpdate: (dreams: Dream[]) => void
 
 export async function saveFeedPost(post: FeedPost): Promise<void> {
   if (!db) return
-  await setDoc(doc(db, 'feed', post.id), { ...post, _updatedAt: serverTimestamp() }, { merge: true })
+  const storyExpiresAt = post.inStory
+    ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    : undefined
+  await setDoc(doc(db, 'feed', post.id), { ...post, storyExpiresAt, _updatedAt: serverTimestamp() }, { merge: true })
+}
+
+export async function fetchActiveStories(count = 20): Promise<FeedPost[]> {
+  if (!db) return []
+  const q = query(
+    collection(db, 'feed'),
+    where('inStory', '==', true),
+    where('storyExpiresAt', '>', new Date().toISOString()),
+    orderBy('storyExpiresAt', 'desc'),
+    limit(count),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => d.data() as FeedPost)
 }
 
 export async function removeFeedPost(dreamId: string): Promise<void> {
@@ -148,4 +165,236 @@ export async function fetchSymbols(uid: string): Promise<DreamSymbol[]> {
   if (!db) return []
   const snap = await getDocs(collection(db, 'users', uid, 'symbols'))
   return snap.docs.map(d => d.data() as DreamSymbol)
+}
+
+// ── Follow graph ───────────────────────────────────────────
+//   users/{uid}/following/{targetUid}  — who this user follows
+//   users/{uid}/followers/{fromUid}    — who follows this user
+
+export async function followUser(
+  myUid: string,
+  myName: string,
+  target: { uid: string; name: string; username: string; photoURL?: string },
+): Promise<void> {
+  if (!db) return
+  const now = new Date().toISOString()
+  await setDoc(doc(db, 'users', myUid, 'following', target.uid), {
+    targetUid: target.uid, targetName: target.name,
+    targetUsername: target.username, targetPhoto: target.photoURL ?? null,
+    createdAt: now, _updatedAt: serverTimestamp(),
+  })
+  await setDoc(doc(db, 'users', target.uid, 'followers', myUid), {
+    followerUid: myUid, followerName: myName,
+    createdAt: now, _updatedAt: serverTimestamp(),
+  })
+}
+
+export async function unfollowUser(myUid: string, targetUid: string): Promise<void> {
+  if (!db) return
+  await Promise.all([
+    deleteDoc(doc(db, 'users', myUid, 'following', targetUid)),
+    deleteDoc(doc(db, 'users', targetUid, 'followers', myUid)),
+  ])
+}
+
+export async function fetchFollowing(uid: string): Promise<Follow[]> {
+  if (!db) return []
+  const snap = await getDocs(collection(db, 'users', uid, 'following'))
+  return snap.docs.map(d => d.data() as Follow)
+}
+
+export function subscribeFollowing(uid: string, onUpdate: (uids: string[]) => void): Unsubscribe {
+  if (!db) return () => {}
+  return onSnapshot(collection(db, 'users', uid, 'following'), snap => {
+    onUpdate(snap.docs.map(d => d.id))
+  })
+}
+
+// ── Comments subcollection ────────────────────────────────
+//   feed/{postId}/comments/{commentId}
+
+export async function addComment(postId: string, comment: Comment): Promise<void> {
+  if (!db) return
+  await setDoc(doc(db, 'feed', postId, 'comments', comment.id), {
+    ...comment, _updatedAt: serverTimestamp(),
+  })
+}
+
+export async function deleteComment(postId: string, commentId: string): Promise<void> {
+  if (!db) return
+  await deleteDoc(doc(db, 'feed', postId, 'comments', commentId))
+}
+
+export function subscribeComments(postId: string, onUpdate: (comments: Comment[]) => void): Unsubscribe {
+  if (!db) return () => {}
+  const q = query(collection(db, 'feed', postId, 'comments'), orderBy('createdAt', 'asc'))
+  return onSnapshot(q, snap => {
+    onUpdate(snap.docs.map(d => d.data() as Comment))
+  })
+}
+
+// ── Likes subcollection ───────────────────────────────────
+//   feed/{postId}/likes/{uid}   (doc existence = liked)
+
+export async function setLike(postId: string, uid: string, liked: boolean): Promise<void> {
+  if (!db) return
+  if (liked) {
+    await setDoc(doc(db, 'feed', postId, 'likes', uid), {
+      createdAt: new Date().toISOString(), _updatedAt: serverTimestamp(),
+    })
+  } else {
+    await deleteDoc(doc(db, 'feed', postId, 'likes', uid))
+  }
+}
+
+export async function fetchIsLiked(postId: string, uid: string): Promise<boolean> {
+  if (!db) return false
+  const snap = await getDoc(doc(db, 'feed', postId, 'likes', uid))
+  return snap.exists()
+}
+
+export async function fetchLikeCount(postId: string): Promise<number> {
+  if (!db) return 0
+  const snap = await getDocs(collection(db, 'feed', postId, 'likes'))
+  return snap.size
+}
+
+// ── Notifications subcollection ───────────────────────────
+//   users/{uid}/notifications/{notifId}
+
+export async function createNotification(targetUid: string, notif: AppNotification): Promise<void> {
+  if (!db) return
+  await setDoc(doc(db, 'users', targetUid, 'notifications', notif.id), {
+    ...notif, _updatedAt: serverTimestamp(),
+  })
+}
+
+export function subscribeNotifications(uid: string, onUpdate: (notifs: AppNotification[]) => void): Unsubscribe {
+  if (!db) return () => {}
+  const q = query(
+    collection(db, 'users', uid, 'notifications'),
+    orderBy('createdAt', 'desc'),
+    limit(50),
+  )
+  return onSnapshot(q, snap => {
+    onUpdate(snap.docs.map(d => d.data() as AppNotification))
+  })
+}
+
+export async function markAllNotificationsRead(uid: string): Promise<void> {
+  if (!db) return
+  const snap = await getDocs(collection(db, 'users', uid, 'notifications'))
+  const unread = snap.docs.filter(d => !d.data().read)
+  await Promise.all(unread.map(d => updateDoc(d.ref, { read: true })))
+}
+
+export async function clearNotificationsCollection(uid: string): Promise<void> {
+  if (!db) return
+  const snap = await getDocs(collection(db, 'users', uid, 'notifications'))
+  await Promise.all(snap.docs.map(d => deleteDoc(d.ref)))
+}
+
+// ── User discovery ────────────────────────────────────────
+// Requires Firestore indexes on email and username fields
+
+export async function lookupUserByEmail(
+  email: string,
+): Promise<{ uid: string; name: string; username: string; photoURL?: string } | null> {
+  if (!db) return null
+  const q = query(collection(db, 'users'), where('email', '==', email), limit(1))
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const d = snap.docs[0]
+  return { uid: d.id, name: d.data().name, username: d.data().username ?? '', photoURL: d.data().photoURL }
+}
+
+export async function lookupUserByUsername(
+  username: string,
+): Promise<{ uid: string; name: string; username: string; photoURL?: string } | null> {
+  if (!db) return null
+  const q = query(collection(db, 'users'), where('username', '==', username), limit(1))
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const d = snap.docs[0]
+  return { uid: d.id, name: d.data().name, username: d.data().username ?? '', photoURL: d.data().photoURL }
+}
+
+export async function fetchPublicProfile(
+  uid: string,
+): Promise<{ name: string; username: string; photoURL?: string; zodiacSign?: string } | null> {
+  if (!db) return null
+  const snap = await getDoc(doc(db, 'users', uid))
+  if (!snap.exists()) return null
+  const d = snap.data()
+  return { name: d.name, username: d.username ?? '', photoURL: d.photoURL, zodiacSign: d.zodiacSign }
+}
+
+// ── Circle invitations ────────────────────────────────────
+//   users/{toUid}/invitations/{inviteId}
+
+export async function sendCircleInvitation(toUid: string, invitation: CircleInvitation): Promise<void> {
+  if (!db) return
+  await setDoc(doc(db, 'users', toUid, 'invitations', invitation.id), {
+    ...invitation, _updatedAt: serverTimestamp(),
+  })
+}
+
+export async function respondToInvitation(
+  uid: string,
+  inviteId: string,
+  status: 'accepted' | 'rejected',
+): Promise<void> {
+  if (!db) return
+  await updateDoc(doc(db, 'users', uid, 'invitations', inviteId), {
+    status, _updatedAt: serverTimestamp(),
+  })
+}
+
+export function subscribeInvitations(
+  uid: string,
+  onUpdate: (invitations: CircleInvitation[]) => void,
+): Unsubscribe {
+  if (!db) return () => {}
+  const q = query(collection(db, 'users', uid, 'invitations'), orderBy('createdAt', 'desc'))
+  return onSnapshot(q, snap => {
+    onUpdate(snap.docs.map(d => d.data() as CircleInvitation))
+  })
+}
+
+// ── Circle memberships (reverse-index) ───────────────────
+//   users/{uid}/circleMemberships/{circleId}
+
+export async function addCircleMembership(uid: string, membership: CircleMembership): Promise<void> {
+  if (!db) return
+  await setDoc(doc(db, 'users', uid, 'circleMemberships', membership.circleId), {
+    ...membership, _updatedAt: serverTimestamp(),
+  })
+}
+
+export async function removeCircleMembership(uid: string, circleId: string): Promise<void> {
+  if (!db) return
+  await deleteDoc(doc(db, 'users', uid, 'circleMemberships', circleId))
+}
+
+export async function fetchCircleMemberships(uid: string): Promise<CircleMembership[]> {
+  if (!db) return []
+  const snap = await getDocs(collection(db, 'users', uid, 'circleMemberships'))
+  return snap.docs.map(d => d.data() as CircleMembership)
+}
+
+// ── Personalized feed ─────────────────────────────────────
+// Queries feed/ where authorId is in the list of followed UIDs.
+// Firestore 'in' supports up to 30 values per query.
+
+export async function fetchFollowingFeed(followingUids: string[], count = 30): Promise<FeedPost[]> {
+  if (!db || followingUids.length === 0) return []
+  const batch = followingUids.slice(0, 30)
+  const q = query(
+    collection(db, 'feed'),
+    where('authorId', 'in', batch),
+    orderBy('createdAt', 'desc'),
+    limit(count),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => d.data() as FeedPost)
 }

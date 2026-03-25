@@ -6,9 +6,10 @@ import {
   FEED_DREAMS,
   type CommunityDream,
 } from '../data/mockCommunity'
-import type { Dream } from '../types/dream'
+import type { Dream, Comment, AppNotification } from '../types/dream'
 import { getSharedPatterns } from '../utils/dreamConnections'
 import type { DreamCircle } from './DreamCircleScreen'
+import { setLike, addComment, createNotification } from '../lib/firestore'
 
 interface SocialScreenProps {
   onOpenStory: (index: number) => void
@@ -19,12 +20,16 @@ interface SocialScreenProps {
   dreams?: Dream[]
   circle?: DreamCircle
   onManageCircle?: () => void
+  currentUserId?: string
+  currentUserName?: string
+  followingSet?: Set<string>
+  onFollow?: (targetUid: string, targetName: string, targetUsername: string) => void
 }
 
 type FeedSort  = 'recent' | 'top'
 type SocialTab = 'community' | 'circle'
 
-export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStories = [], dreams = [], circle, onManageCircle }: SocialScreenProps) {
+export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStories = [], dreams = [], circle, onManageCircle, currentUserId, currentUserName, followingSet, onFollow }: SocialScreenProps) {
   const [viewedSet,       setViewedSet]       = useState<Set<string>>(
     () => new Set(COMMUNITY_USERS.filter(u => u.viewed).map(u => u.id))
   )
@@ -39,6 +44,34 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
   const storyUsers = COMMUNITY_USERS.filter(u =>
     STORY_DREAMS.some(d => d.userId === u.id)
   )
+
+  function submitComment() {
+    const text = commentInput.trim()
+    if (!text || !focusDream) return
+    const comment: Comment = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      userId: currentUserId ?? 'me',
+      userName: currentUserName ?? myName ?? 'You',
+      text,
+      createdAt: new Date().toISOString(),
+    }
+    setLocalComments(prev => [...prev, { text, time: 'Just now' }])
+    setCommentInput('')
+    if (currentUserId && focusDream.userId !== 'me') {
+      addComment(focusDream.id, comment).catch(() => {})
+      const notif: AppNotification = {
+        id: `comment_${comment.id}`,
+        type: 'comment',
+        fromUserId: currentUserId,
+        fromUserName: currentUserName ?? myName ?? 'Someone',
+        dreamId: focusDream.id,
+        dreamTitle: focusDream.title,
+        read: false,
+        createdAt: comment.createdAt,
+      }
+      createNotification(focusDream.userId, notif).catch(() => {})
+    }
+  }
 
   function handleAvatarTap(userId: string) {
     const idx = STORY_DREAMS.findIndex(d => d.userId === userId)
@@ -216,7 +249,11 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
                     <div className="feed-card-actions">
                       <button
                         className={`feed-action-btn ${isLiked ? 'active' : ''}`}
-                        onClick={() => setLiked(l => ({ ...l, [dream.id]: !isLiked }))}
+                        onClick={() => {
+                          const next = !isLiked
+                          setLiked(l => ({ ...l, [dream.id]: next }))
+                          if (currentUserId) setLike(dream.id, currentUserId, next).catch(() => {})
+                        }}
                       >
                         <svg width="16" height="16" viewBox="0 0 16 16" fill={isLiked ? 'currentColor' : 'none'}>
                           <path d="M8 13.5S2 9.5 2 5.5a3 3 0 016 0 3 3 0 016 0c0 4-6 8-6 8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
@@ -365,7 +402,7 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
                   <path d="M12 4L6 10l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
-              <div className="feed-detail-user" onClick={() => {}}>
+              <div className="feed-detail-user">
                 <div className="feed-card-avatar" style={{ width: 32, height: 32, fontSize: 11 }}>
                   {isMe
                     ? (myAvatar ? <img src={myAvatar} alt="Me" className="feed-card-avatar-img" /> : (myName ?? 'ME').slice(0,2).toUpperCase())
@@ -377,6 +414,14 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
                   <span className="feed-detail-zodiac">{isMe ? '' : fUser?.zodiac}</span>
                 </div>
               </div>
+              {!isMe && (
+                <button
+                  className={`feed-detail-follow-btn ${followingSet?.has(focusDream.userId) ? 'following' : ''}`}
+                  onClick={() => onFollow?.(focusDream.userId, fUser?.name ?? '', '')}
+                >
+                  {followingSet?.has(focusDream.userId) ? 'Following' : 'Follow'}
+                </button>
+              )}
             </div>
 
             <div className="feed-detail-image" style={{ background: focusDream.visual }} />
@@ -391,7 +436,26 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
               <div className="feed-detail-actions">
                 <button
                   className={`feed-action-btn ${isLiked ? 'active' : ''}`}
-                  onClick={() => setLiked(l => ({ ...l, [focusDream.id]: !isLiked }))}
+                  onClick={() => {
+                    const next = !isLiked
+                    setLiked(l => ({ ...l, [focusDream.id]: next }))
+                    if (currentUserId) {
+                      setLike(focusDream.id, currentUserId, next).catch(() => {})
+                      if (next && !isMe) {
+                        const notif: AppNotification = {
+                          id: `like_${currentUserId}_${focusDream.id}`,
+                          type: 'like',
+                          fromUserId: currentUserId,
+                          fromUserName: currentUserName ?? myName ?? 'Someone',
+                          dreamId: focusDream.id,
+                          dreamTitle: focusDream.title,
+                          read: false,
+                          createdAt: new Date().toISOString(),
+                        }
+                        createNotification(focusDream.userId, notif).catch(() => {})
+                      }
+                    }
+                  }}
                 >
                   <svg width="18" height="18" viewBox="0 0 16 16" fill={isLiked ? 'currentColor' : 'none'}>
                     <path d="M8 13.5S2 9.5 2 5.5a3 3 0 016 0 3 3 0 016 0c0 4-6 8-6 8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
@@ -424,18 +488,10 @@ export function SocialScreen({ onOpenStory, onAddStory, myName, myAvatar, myStor
                     placeholder="Add a comment…"
                     value={commentInput}
                     onChange={e => setCommentInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && commentInput.trim()) {
-                        setLocalComments(prev => [...prev, { text: commentInput.trim(), time: 'Just now' }])
-                        setCommentInput('')
-                      }
-                    }}
+                    onKeyDown={e => { if (e.key === 'Enter') submitComment() }}
                   />
                   {commentInput.trim() && (
-                    <button className="feed-detail-comment-send" onClick={() => {
-                      setLocalComments(prev => [...prev, { text: commentInput.trim(), time: 'Just now' }])
-                      setCommentInput('')
-                    }}>Send</button>
+                    <button className="feed-detail-comment-send" onClick={submitComment}>Send</button>
                   )}
                 </div>
               </div>
