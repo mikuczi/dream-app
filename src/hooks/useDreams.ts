@@ -49,18 +49,18 @@ export function useDreams(uid?: string | null) {
     let hasReceivedData = false
     const unsub = subscribeDreams(uid, remoteDreams => {
       if (!active) return
-      setDreams(remoteDreams)
-      // Only overwrite localStorage once Firestore has confirmed non-empty data,
-      // OR once it has confirmed the user genuinely has zero dreams (after first real fetch)
       if (remoteDreams.length > 0) {
+        // Firestore has real data — use it as the source of truth
         hasReceivedData = true
+        setDreams(remoteDreams)
         saveLocalForUser(uid, remoteDreams)
       } else if (hasReceivedData) {
-        // User deleted all their dreams — clear cache
+        // User deleted all their dreams — clear both
+        setDreams([])
         saveLocalForUser(uid, [])
       }
-      // If remoteDreams is empty and we haven't received real data yet,
-      // don't overwrite localStorage — Firestore may still be loading
+      // First snapshot is empty → Firestore hasn't confirmed data yet.
+      // Keep the localStorage-loaded state intact rather than blanking the screen.
     })
     return () => {
       active = false

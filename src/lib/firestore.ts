@@ -51,9 +51,10 @@ export async function fetchAllDreams(uid: string): Promise<Dream[]> {
 export function subscribeDreams(uid: string, onUpdate: (dreams: Dream[]) => void): Unsubscribe {
   if (!db) return () => {}
   const q = query(dreamsCol(uid), orderBy('createdAt', 'desc'))
-  return onSnapshot(q, snap => {
-    onUpdate(snap.docs.map(d => d.data() as Dream))
-  })
+  return onSnapshot(q,
+    snap => { onUpdate(snap.docs.map(d => d.data() as Dream)) },
+    err  => { console.error('[subscribeDreams] Firestore error (check rules):', err.code, err.message) }
+  )
 }
 
 // ── Feed (public / circle posts) ──────────────────────────
@@ -109,9 +110,10 @@ export function subscribePublicFeed(
     orderBy('createdAt', 'desc'),
     limit(count),
   )
-  return onSnapshot(q, snap => {
-    onUpdate(snap.docs.map(d => d.data() as FeedPost))
-  })
+  return onSnapshot(q,
+    snap => { onUpdate(snap.docs.map(d => d.data() as FeedPost)) },
+    err  => { console.error('[subscribePublicFeed] Firestore error (check rules):', err.code, err.message) }
+  )
 }
 
 // Fetch circle posts from a set of member UIDs (including self)
