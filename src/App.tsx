@@ -394,8 +394,12 @@ export function App() {
       setMyStories(prev => [dream, ...prev.filter(d => d.id !== dream.id)])
     }
 
-    // Mirror to feed collection if shared
-    if (dream.inFeed && dream.visibility !== 'private' && fbUser) {
+    // Mirror to Firestore feed:
+    // - inStory:true → always public (stories are always public)
+    // - inFeed:true + non-private visibility → feed post with chosen visibility
+    const shouldPost = (dream.inStory || (dream.inFeed && dream.visibility !== 'private'))
+    if (shouldPost && fbUser) {
+      const postVisibility = dream.inStory ? 'public' : dream.visibility as 'circle' | 'public'
       saveFeedPost({
         id: dream.id,
         authorId: fbUser.uid,
@@ -406,11 +410,11 @@ export function App() {
         transcript: dream.transcript,
         mood: dream.mood,
         tags: dream.tags,
-        visibility: dream.visibility as 'circle' | 'public',
+        visibility: postVisibility,
         circleId: dream.circleId,
-        inStory: dream.inStory,
+        inStory: !!dream.inStory,
         createdAt: dream.createdAt,
-      }).catch(() => {})
+      }).catch(err => console.error('[saveFeedPost] failed:', err?.code, err?.message))
     }
 
     const toastMsg = dream.inStory

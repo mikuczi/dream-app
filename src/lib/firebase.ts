@@ -25,8 +25,13 @@ const auth = app ? getAuth(app) : null
 // Firestore is optional — only initialised if the project has it enabled
 let db: ReturnType<typeof getFirestore> | null = null
 try {
-  if (app) db = getFirestore(app)
-} catch { /* Firestore not enabled — app runs in localStorage-only mode */ }
+  if (app) {
+    db = getFirestore(app)
+    console.log('[firebase] Firestore initialised ✓')
+  }
+} catch (err) {
+  console.error('[firebase] Firestore failed to initialise — running localStorage-only:', err)
+}
 
 // FCM is optional — only available in secure contexts with a valid vapid key
 let messaging: Messaging | null = null

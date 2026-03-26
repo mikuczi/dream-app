@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   auth, CONFIGURED,
-  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, fbSignOut,
+  GoogleAuthProvider, signInWithRedirect, getRedirectResult, fbSignOut,
   onAuthStateChanged, type FBUser,
 } from '../lib/firebase'
 
@@ -24,12 +24,20 @@ export function useFirebaseAuth(): FirebaseAuthState {
       setStatus('signed-out')
       return
     }
-    // Pick up the result from the Google redirect sign-in
-    getRedirectResult(auth).catch(err => {
-      console.error('[auth] getRedirectResult error:', err)
-    })
+
+    // getRedirectResult must resolve before we trust onAuthStateChanged('signed-out'),
+    // otherwise the login screen flashes briefly on redirect return.
+    let redirectResolved = false
+
+    getRedirectResult(auth)
+      .then(() => { redirectResolved = true })
+      .catch(err => {
+        console.error('[auth] getRedirectResult error:', err)
+        redirectResolved = true
+      })
 
     const unsub = onAuthStateChanged(auth, user => {
+      if (!redirectResolved && !user) return // wait for redirect result first
       setFbUser(user ?? null)
       setStatus(user ? 'signed-in' : 'signed-out')
     })
@@ -40,13 +48,9 @@ export function useFirebaseAuth(): FirebaseAuthState {
     if (!auth) return
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
-    try {
-      await signInWithPopup(auth, provider)
-    } catch (err: any) {
-      if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/popup-closed-by-user') {
-        await signInWithRedirect(auth, provider)
-      }
-    }
+    // Use redirect-only: Google's OAuth server sends COOP:same-origin which blocks
+    // popup window polling regardless of our COOP header, causing ~40s timeouts.
+    await signInWithRedirect(auth, provider)
   }
 
   async function signOut() {
