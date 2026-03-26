@@ -10,6 +10,14 @@ if ('serviceWorker' in navigator) {
   })
 }
 
+// ── Stale chunk recovery ──────────────────────────────────
+// When a new deploy changes chunk hashes, cached pages try to load
+// chunks that no longer exist → the server returns HTML → MIME error.
+// Catch it and reload once to pick up the latest bundle.
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload()
+})
+
 // ── Morning dream reminder scheduler ────────────────────
 // Checks once per hour whether it's time to show the reminder
 function scheduleDreamReminder() {
