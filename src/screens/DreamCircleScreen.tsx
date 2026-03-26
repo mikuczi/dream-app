@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import './DreamCircleScreen.css'
 import type { Dream, CircleInvitation, CircleMembership } from '../types/dream'
-import { lookupUserByEmail, sendCircleInvitation, subscribeInvitations, respondToInvitation, addCircleMembership, createNotification, fetchPublicProfile } from '../lib/firestore'
+import { lookupUserByEmail, sendCircleInvitation, subscribeInvitations, respondToInvitation, addCircleMembership, addMemberToCircle, createNotification, fetchPublicProfile } from '../lib/firestore'
 import type { AppNotification } from '../types/dream'
 
 export interface DreamCircle {
@@ -152,6 +152,8 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
         joinedAt: new Date().toISOString(),
       }
       addCircleMembership(currentUid, membership).catch(() => {})
+      // Add accepter to inviter's circle (they can't do it themselves — cross-user write)
+      addMemberToCircle(invite.fromUid, currentUid).catch(() => {})
     }
   }
 

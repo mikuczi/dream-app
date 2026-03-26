@@ -5,7 +5,7 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut as fbSignOut, onAuthStateChanged, type User as FBUser } from 'firebase/auth'
 // signInWithPopup kept for potential future use
-import { getFirestore, doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc, increment } from 'firebase/firestore'
+import { getFirestore, doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc, increment, arrayUnion } from 'firebase/firestore'
 import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging'
 
 // Use the app's own hostname as authDomain in production to avoid Chrome's
@@ -64,4 +64,4 @@ export { onMessage }
 export { auth, db, messaging, CONFIGURED }
 export type { FBUser }
 export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, fbSignOut, onAuthStateChanged }
-export { doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc, increment }
+export { doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc, increment, arrayUnion }

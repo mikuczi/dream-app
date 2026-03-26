@@ -25,7 +25,17 @@ service cloud.firestore {
       allow update, delete: if request.auth.uid == uid;
     }
 
-    // ── User subcollections (dreams, circles, etc.) ────────
+    // ── Circle documents (allow members to add themselves) ─
+    // Any authenticated user can update a circle's memberIds
+    // (used when accepting a circle invitation via arrayUnion).
+    // Only the owner can create or delete their circles.
+    match /users/{uid}/circles/{circleId} {
+      allow read:   if request.auth.uid == uid;
+      allow create, delete: if request.auth.uid == uid;
+      allow update: if request.auth != null;
+    }
+
+    // ── User subcollections (dreams, chatHistory, etc.) ────
     // Only the owner can access their own subcollections.
     match /users/{uid}/{sub}/{docId} {
       allow read, write: if request.auth.uid == uid;

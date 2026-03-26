@@ -13,7 +13,7 @@ import type { Dream, FeedPost, DreamCircle, AIChatMessage, DreamPattern, DreamSy
 import {
   db, doc, setDoc, collection, query,
   getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit,
-  getDoc, updateDoc, increment,
+  getDoc, updateDoc, increment, arrayUnion,
 } from './firebase'
 import type { Unsubscribe } from 'firebase/firestore'
 
@@ -170,6 +170,16 @@ export async function saveDefaultCircle(
 ): Promise<void> {
   if (!db) return
   await setDoc(doc(db, 'users', uid, 'circles', 'default'), { ...circle, _updatedAt: serverTimestamp() }, { merge: true })
+}
+
+// Adds a member UID to an owner's default circle using arrayUnion (atomic, no overwrite).
+// Called by the invitee when they accept a circle invitation.
+export async function addMemberToCircle(ownerUid: string, newMemberUid: string): Promise<void> {
+  if (!db) return
+  await updateDoc(doc(db, 'users', ownerUid, 'circles', 'default'), {
+    memberIds: arrayUnion(newMemberUid),
+    _updatedAt: serverTimestamp(),
+  })
 }
 
 export function subscribeDefaultCircle(
