@@ -1,11 +1,6 @@
 import { useState, useEffect } from 'react'
 import './SocialScreen.css'
-import {
-  COMMUNITY_USERS,
-  STORY_DREAMS,
-  FEED_DREAMS,
-  type CommunityDream,
-} from '../data/mockCommunity'
+import type { CommunityDream } from '../data/mockCommunity'
 import type { Dream, Comment, AppNotification, FeedPost } from '../types/dream'
 import { getSharedPatterns } from '../utils/dreamConnections'
 import type { DreamCircle } from './DreamCircleScreen'
@@ -50,10 +45,8 @@ function feedPostToCommunityDream(p: FeedPost): CommunityDream {
   }
 }
 
-export function SocialScreen({ onOpenStory, onOpenMyStory, onAddStory, myName, myAvatar, myStories = [], dreams = [], circle, onManageCircle, currentUserId, currentUserName, followingSet, onFollow, onViewProfile }: SocialScreenProps) {
-  const [viewedSet,       setViewedSet]       = useState<Set<string>>(
-    () => new Set(COMMUNITY_USERS.filter(u => u.viewed).map(u => u.id))
-  )
+export function SocialScreen({ onOpenMyStory, onAddStory, myName, myAvatar, myStories = [], dreams = [], circle, onManageCircle, currentUserId, currentUserName, followingSet, onFollow, onViewProfile }: SocialScreenProps) {
+  const [viewedSet,       setViewedSet]       = useState<Set<string>>(new Set())
   const [socialTab,       setSocialTab]       = useState<SocialTab>('community')
   const [sort,            setSort]            = useState<FeedSort>('recent')
   const [liked,           setLiked]           = useState<Record<string, boolean>>({})
@@ -96,11 +89,6 @@ export function SocialScreen({ onOpenStory, onOpenMyStory, onAddStory, myName, m
     }).catch(() => {})
   }, [currentUserId, circle?.memberIds?.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const now = new Date().toISOString()
-  const storyUsers = COMMUNITY_USERS.filter(u =>
-    STORY_DREAMS.some(d => d.userId === u.id && (!d.storyExpiresAt || d.storyExpiresAt > now))
-  )
-
   function submitComment() {
     const text = commentInput.trim()
     if (!text || !focusDream) return
@@ -129,14 +117,6 @@ export function SocialScreen({ onOpenStory, onOpenMyStory, onAddStory, myName, m
     }
   }
 
-  function handleAvatarTap(userId: string) {
-    const idx = STORY_DREAMS.findIndex(d => d.userId === userId)
-    if (idx !== -1) {
-      setViewedSet(s => new Set([...s, userId]))
-      onOpenStory(idx)
-    }
-  }
-
   const myFeedItems: CommunityDream[] = myStories.map(d => ({
     id: d.id,
     userId: 'me',
@@ -152,10 +132,7 @@ export function SocialScreen({ onOpenStory, onOpenMyStory, onAddStory, myName, m
 
   const sharedPatterns = getSharedPatterns(dreams)
 
-  // Merge live Firestore posts with mock fallback (deduplicate by id)
-  const liveIds = new Set(liveFeed.map(d => d.id))
-  const mockFallback = feedLoading ? FEED_DREAMS : FEED_DREAMS.filter(d => !liveIds.has(d.id))
-  const sortedFeed: CommunityDream[] = [...myFeedItems, ...liveFeed, ...mockFallback].sort((a, b) =>
+  const sortedFeed: CommunityDream[] = [...myFeedItems, ...liveFeed].sort((a, b) =>
     sort === 'top' ? b.likes - a.likes : 0
   )
 
@@ -172,12 +149,9 @@ export function SocialScreen({ onOpenStory, onOpenMyStory, onAddStory, myName, m
     }))
   const liveCircleIds = new Set(circleLiveFeed.map(d => d.id))
   const mergedCircleFeed = [...circleLiveFeed, ...localCircleDreams.filter(d => !liveCircleIds.has(d.id))]
-  // Build member display info from live feed authors (real data) with mock fallback
   const circleMembers = circle
     ? circle.memberIds.map(uid => {
-        const mock = COMMUNITY_USERS.find(u => u.id === uid)
         const live = circleLiveFeed.find(d => d.userId === uid)
-        if (mock) return { id: uid, name: mock.name, initials: mock.initials, avatar: mock.avatar }
         if (live) return { id: uid, name: live.authorName ?? uid, initials: (live.authorName ?? uid).slice(0,2).toUpperCase(), avatar: live.authorPhoto }
         return { id: uid, name: uid.slice(0, 8), initials: uid.slice(0,2).toUpperCase(), avatar: undefined }
       })
@@ -260,27 +234,6 @@ export function SocialScreen({ onOpenStory, onOpenMyStory, onAddStory, myName, m
                   </button>
                 )
               })}
-              {/* Mock story authors as fallback when no real stories exist */}
-              {liveStoryUsers.size === 0 && storyUsers.map(user => {
-                const viewed = viewedSet.has(user.id)
-                return (
-                  <button
-                    key={user.id}
-                    className="story-avatar-btn"
-                    onClick={() => handleAvatarTap(user.id)}
-                  >
-                    <div className={`story-ring ${viewed ? 'viewed' : 'unviewed'}`}>
-                      <div className="story-avatar-circle">
-                        {user.avatar
-                          ? <img src={user.avatar} alt={user.name} className="story-avatar-img" />
-                          : <span className="story-avatar-initials">{user.initials}</span>
-                        }
-                      </div>
-                    </div>
-                    <span className="story-avatar-name">{user.name}</span>
-                  </button>
-                )
-              })}
             </div>
           </div>
 
@@ -326,10 +279,16 @@ export function SocialScreen({ onOpenStory, onOpenMyStory, onAddStory, myName, m
                 {[0,1,2].map(i => <div key={i} className="feed-skeleton" />)}
               </div>
             )}
+            {!feedLoading && sortedFeed.length === 0 && (
+              <div className="circle-feed-empty">
+                <div className="circle-feed-empty-icon">🌙</div>
+                <p className="circle-feed-empty-title">No dreams shared yet</p>
+                <p className="circle-feed-empty-sub">Record a dream and set its visibility to Public to see it here.</p>
+              </div>
+            )}
             {sortedFeed.map(dream => {
-              const isMe    = dream.userId === 'me'
-              const mockUser = isMe ? null : COMMUNITY_USERS.find(u => u.id === dream.userId)
-              const user     = mockUser ?? (dream.authorName ? { id: dream.userId, name: dream.authorName, initials: dream.authorName.slice(0,2).toUpperCase(), zodiac: '', viewed: false, avatar: dream.authorPhoto } : null)
+              const isMe = dream.userId === 'me'
+              const user = isMe ? null : (dream.authorName ? { id: dream.userId, name: dream.authorName, initials: dream.authorName.slice(0,2).toUpperCase(), zodiac: '', avatar: dream.authorPhoto } : null)
               if (!isMe && !user) return null
               const isLiked = liked[dream.id] ?? dream.liked
               const isSaved = saved[dream.id] ?? dream.saved
@@ -502,9 +461,8 @@ export function SocialScreen({ onOpenStory, onOpenMyStory, onAddStory, myName, m
 
       {/* ── Full-screen dream overlay ─────────────────────── */}
       {focusDream && (() => {
-        const isMe      = focusDream.userId === 'me'
-        const mockFUser = isMe ? null : COMMUNITY_USERS.find(u => u.id === focusDream.userId)
-        const fUser     = mockFUser ?? (focusDream.authorName ? { id: focusDream.userId, name: focusDream.authorName, initials: focusDream.authorName.slice(0,2).toUpperCase(), zodiac: '', viewed: false, avatar: focusDream.authorPhoto } : null)
+        const isMe  = focusDream.userId === 'me'
+        const fUser = isMe ? null : (focusDream.authorName ? { id: focusDream.userId, name: focusDream.authorName, initials: focusDream.authorName.slice(0,2).toUpperCase(), zodiac: '', avatar: focusDream.authorPhoto } : null)
         const isLiked = liked[focusDream.id] ?? focusDream.liked
         const isSaved = saved[focusDream.id] ?? focusDream.saved
         return (

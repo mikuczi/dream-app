@@ -492,6 +492,27 @@
   margin-top: 6px;
 }
 
+.circle-invite-notfound {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.circle-invite-app-btn {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: rgba(155, 140, 255, 0.15);
+  border: 1px solid rgba(155, 140, 255, 0.3);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  text-decoration: none;
+  text-align: center;
+}
+
 .circle-invitations-list {
   margin-top: 10px;
   display: flex;

@@ -1,5 +1,4 @@
 import type { Dream } from '../types/dream'
-import { FEED_DREAMS } from '../data/mockCommunity'
 
 export type ConnectionType = 'recurring' | 'community' | 'milestone'
 
@@ -32,13 +31,7 @@ function countUserTags(dreams: Dream[], days = 30): Record<string, string[]> {
 
 // ── Count tag frequency in community dreams ───────────────
 function countCommunityTags(): Record<string, number> {
-  const map: Record<string, number> = {}
-  FEED_DREAMS.forEach(d => {
-    d.tags.forEach(tag => {
-      map[tag] = (map[tag] ?? 0) + 1
-    })
-  })
-  return map
+  return {}
 }
 
 function capitalise(s: string) {

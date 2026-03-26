@@ -50,7 +50,6 @@ import { SideDrawer }           from './components/SideDrawer'
 import type { ActiveView }      from './components/BottomBar'
 import type { Dream, User, DreamVisibility } from './types/dream'
 import { getEarnedBadgeIds, BADGES, type BadgeFlags } from './data/badges'
-import { STORY_DREAMS, COMMUNITY_USERS } from './data/mockCommunity'
 
 const KEY_USER              = 'dj_user'
 const KEY_ONBOARDED         = 'dj_onboarded' // legacy key — new code uses per-user key below
@@ -738,8 +737,8 @@ export function App() {
           timeAgo: 'Just now',
           liked: false, saved: false,
         }))
-        const allStories = [...myStoriesMapped, ...STORY_DREAMS]
-        const allUsers   = [myUserEntry, ...COMMUNITY_USERS]
+        const allStories = myStoriesMapped
+        const allUsers   = [myUserEntry]
         return (
           <StoryViewer
             stories={allStories}

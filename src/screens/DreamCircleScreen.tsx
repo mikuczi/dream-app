@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import './DreamCircleScreen.css'
-import { COMMUNITY_USERS, type CommunityUser } from '../data/mockCommunity'
 import type { Dream, CircleInvitation, CircleMembership } from '../types/dream'
-import { lookupUserByEmail, sendCircleInvitation, subscribeInvitations, respondToInvitation, addCircleMembership, createNotification } from '../lib/firestore'
+import { lookupUserByEmail, sendCircleInvitation, subscribeInvitations, respondToInvitation, addCircleMembership, createNotification, fetchPublicProfile } from '../lib/firestore'
 import type { AppNotification } from '../types/dream'
 
 export interface DreamCircle {
@@ -13,6 +12,7 @@ export interface DreamCircle {
 
 type InviteStatus = 'pending' | 'accepted' | 'rejected'
 interface Invitation { userId: string; email: string; status: InviteStatus }
+interface MemberProfile { uid: string; name: string; photoURL?: string; zodiacSign?: string }
 
 interface DreamCircleScreenProps {
   circle: DreamCircle
@@ -29,17 +29,17 @@ const CIRCLE_COLORS = [
   '#9B8CFF', '#7bb3f4', '#c97bf4', '#f4c97b', '#7bf4c4',
 ]
 
-export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentName, onFollowUser, onUpdate, onBack }: DreamCircleScreenProps) {
+export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentName, onUpdate, onBack }: DreamCircleScreenProps) {
   const [editingName,   setEditingName]   = useState(false)
   const [nameVal,       setNameVal]       = useState(circle.name)
   const [showAdd,       setShowAdd]       = useState(false)
   const [showColors,    setShowColors]    = useState(false)
-  const [pendingIds,      setPendingIds]      = useState<string[]>([])
   const [emailInput,      setEmailInput]      = useState('')
   const [emailError,      setEmailError]      = useState('')
   const [invitations,     setInvitations]     = useState<Invitation[]>([])
-  const [profileUser,     setProfileUser]     = useState<CommunityUser | null>(null)
   const [receivedInvites, setReceivedInvites] = useState<CircleInvitation[]>([])
+  const [memberProfiles,  setMemberProfiles]  = useState<MemberProfile[]>([])
+  const [inviteEmail,     setInviteEmail]     = useState<string | null>(null)
 
   useEffect(() => {
     if (!currentUid) return
@@ -48,12 +48,20 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
     })
   }, [currentUid])
 
-  const members      = COMMUNITY_USERS.filter(u => circle.memberIds.includes(u.id))
+  // Fetch real Firestore profiles for circle members
+  useEffect(() => {
+    if (circle.memberIds.length === 0) { setMemberProfiles([]); return }
+    Promise.all(circle.memberIds.map(uid => fetchPublicProfile(uid).then(p => p ? { uid, ...p } : { uid, name: uid.slice(0, 8) })))
+      .then(profiles => setMemberProfiles(profiles as MemberProfile[]))
+      .catch(() => {})
+  }, [circle.memberIds.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const circleDreams = dreams.filter(d => d.visibility === 'circle')
 
   function openAddSheet() {
-    setPendingIds([...circle.memberIds])
     setEmailInput('')
+    setEmailError('')
+    setInviteEmail(null)
     setShowAdd(true)
   }
 
@@ -70,29 +78,11 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
     onUpdate({ ...circle, memberIds: ids })
   }
 
-  function togglePending(userId: string) {
-    setPendingIds(prev =>
-      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
-    )
-  }
-
   async function handleEmailInvite() {
     const email = emailInput.trim().toLowerCase()
     setEmailError('')
+    setInviteEmail(null)
     if (!email) return
-
-    // Check mock community first (local demo users)
-    const mockFound = COMMUNITY_USERS.find(u => u.email?.toLowerCase() === email)
-    if (mockFound) {
-      const already = invitations.find(i => i.userId === mockFound.id)
-      if (already) {
-        setEmailError(already.status === 'pending' ? 'Invitation already sent' : 'Already responded')
-        return
-      }
-      setInvitations(prev => [...prev, { userId: mockFound.id, email, status: 'pending' }])
-      setEmailInput('')
-      return
-    }
 
     // Firestore lookup for real users
     let fsUser: { uid: string; name: string; username: string; photoURL?: string } | null = null
@@ -105,7 +95,7 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
     }
 
     if (!fsUser) {
-      setEmailError("No account found. Ask them to open the app and sign in once, then try again.")
+      setInviteEmail(email)
       return
     }
     if (fsUser.uid === currentUid) {
@@ -146,11 +136,6 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
     }
     setInvitations(prev => [...prev, { userId: fsUser!.uid, email, status: 'pending' }])
     setEmailInput('')
-  }
-
-  function handleSendInvites() {
-    onUpdate({ ...circle, memberIds: pendingIds })
-    setShowAdd(false)
   }
 
   async function handleInviteResponse(invite: CircleInvitation, accepted: boolean) {
@@ -236,7 +221,7 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
 
         <div className="circle-stats">
           <span className="circle-stat">
-            <span className="circle-stat-val">{members.length}</span>
+            <span className="circle-stat-val">{memberProfiles.length}</span>
             <span className="circle-stat-label">members</span>
           </span>
           <span className="circle-stat-dot" />
@@ -282,18 +267,16 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
       <div className="circle-section">
         <div className="circle-section-header">
           <span className="circle-section-title">Members</span>
-          {COMMUNITY_USERS.length > 0 && (
-            <button className="circle-add-btn" onClick={openAddSheet}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              Add people
-            </button>
-          )}
+          <button className="circle-add-btn" onClick={openAddSheet}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Add people
+          </button>
         </div>
 
-        {members.length === 0 ? (
+        {memberProfiles.length === 0 ? (
           <div className="circle-empty">
             <p className="circle-empty-text">Your circle is empty.</p>
             <p className="circle-empty-sub">Add close friends to share dreams privately.</p>
@@ -315,26 +298,29 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
                 <span className="circle-member-role">Owner</span>
               </div>
             </div>
-            {members.map(m => (
-              <div key={m.id} className="circle-member-row" onClick={() => setProfileUser(m)} style={{ cursor: 'pointer' }}>
-                <div className="circle-member-avatar">
-                  {m.avatar
-                    ? <img src={m.avatar} alt={m.name} className="circle-member-img" />
-                    : <span>{m.initials}</span>
-                  }
+            {memberProfiles.map(m => {
+              const initials = m.name.slice(0, 2).toUpperCase()
+              return (
+                <div key={m.uid} className="circle-member-row">
+                  <div className="circle-member-avatar">
+                    {m.photoURL
+                      ? <img src={m.photoURL} alt={m.name} className="circle-member-img" />
+                      : <span>{initials}</span>
+                    }
+                  </div>
+                  <div className="circle-member-info">
+                    <span className="circle-member-name">{m.name}</span>
+                    <span className="circle-member-zodiac">{m.zodiacSign ?? ''} Member</span>
+                  </div>
+                  <button className="circle-member-remove" onClick={e => { e.stopPropagation(); toggleMember(m.uid) }} aria-label="Remove">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <line x1="3" y1="3" x2="11" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                      <line x1="11" y1="3" x2="3" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    </svg>
+                  </button>
                 </div>
-                <div className="circle-member-info">
-                  <span className="circle-member-name">{m.name}</span>
-                  <span className="circle-member-zodiac">{m.zodiac} Member</span>
-                </div>
-                <button className="circle-member-remove" onClick={e => { e.stopPropagation(); toggleMember(m.id) }} aria-label="Remove">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <line x1="3" y1="3" x2="11" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                    <line x1="11" y1="3" x2="3" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                </button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
@@ -359,141 +345,57 @@ export function DreamCircleScreen({ circle, dreams, myName, currentUid, currentN
       )}
 
       {/* ── Add people sheet ──────────────────────────────── */}
-      {showAdd && (() => {
-        const filtered = emailInput.trim()
-          ? COMMUNITY_USERS.filter(u => u.name.toLowerCase().includes(emailInput.toLowerCase()))
-          : COMMUNITY_USERS
-        const newCount = pendingIds.filter(id => !circle.memberIds.includes(id)).length
-        return (
-          <>
-            <div className="circle-sheet-scrim" onClick={() => setShowAdd(false)} />
-            <div className="circle-sheet">
-              <div className="circle-sheet-handle" />
-              <p className="circle-sheet-title">Add to {circle.name}</p>
-
-              {/* Email invite */}
-              <div className="circle-email-invite-wrap">
-                <div className="circle-email-row">
-                  <input
-                    className="circle-sheet-search"
-                    type="email"
-                    placeholder="Enter email to invite…"
-                    value={emailInput}
-                    onChange={e => { setEmailInput(e.target.value); setEmailError('') }}
-                    onKeyDown={e => e.key === 'Enter' && handleEmailInvite()}
-                    autoComplete="off"
-                  />
-                  <button className="circle-email-send-btn" onClick={handleEmailInvite}>Send</button>
-                </div>
-                {emailError && <p className="circle-email-error">{emailError}</p>}
-                {invitations.length > 0 && (
-                  <div className="circle-invitations-list">
-                    {invitations.map(inv => {
-                      const u = COMMUNITY_USERS.find(u => u.id === inv.userId)
-                      return (
-                        <div key={inv.userId} className="circle-inv-row">
-                          <span className="circle-inv-name">{u?.name ?? inv.email}</span>
-                          <span className={`circle-inv-status circle-inv-${inv.status}`}>{inv.status}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="circle-sheet-divider"><span>or browse</span></div>
-
-              {filtered.length === 0 ? (
-                <p className="circle-sheet-empty">No results found.</p>
-              ) : (
-                filtered.map(u => {
-                  const isAdded = pendingIds.includes(u.id)
-                  return (
-                    <button key={u.id} className="circle-sheet-row" onClick={() => togglePending(u.id)}>
-                      <div className="circle-member-avatar">
-                        {u.avatar
-                          ? <img src={u.avatar} alt={u.name} className="circle-member-img" />
-                          : <span>{u.initials}</span>
-                        }
-                      </div>
-                      <div className="circle-member-info">
-                        <span className="circle-member-name">{u.name}</span>
-                        <span className="circle-member-zodiac">{u.zodiac}</span>
-                      </div>
-                      <div className={`circle-sheet-toggle ${isAdded ? 'added' : ''}`}>
-                        {isAdded ? (
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <path d="M2.5 7l3.5 3.5 5.5-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                            <line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                          </svg>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })
-              )}
-
-              <div className="circle-sheet-footer">
-                <button
-                  className="circle-sheet-send-btn"
-                  onClick={handleSendInvites}
-                >
-                  {newCount > 0 ? `Send Invites (${newCount})` : 'Done'}
-                </button>
-              </div>
-            </div>
-          </>
-        )
-      })()}
-
-      {/* ── Member profile preview ───────────────────────── */}
-      {profileUser && (
+      {showAdd && (
         <>
-          <div className="circle-sheet-scrim" onClick={() => setProfileUser(null)} />
-          <div className="circle-sheet circle-profile-sheet">
+          <div className="circle-sheet-scrim" onClick={() => setShowAdd(false)} />
+          <div className="circle-sheet">
             <div className="circle-sheet-handle" />
-            <div className="circle-profile-header">
-              <div className="circle-profile-avatar">
-                {profileUser.avatar
-                  ? <img src={profileUser.avatar} alt={profileUser.name} className="circle-member-img" />
-                  : <span>{profileUser.initials}</span>
-                }
+            <p className="circle-sheet-title">Add to {circle.name}</p>
+
+            <div className="circle-email-invite-wrap">
+              <div className="circle-email-row">
+                <input
+                  className="circle-sheet-search"
+                  type="email"
+                  placeholder="Enter email to invite…"
+                  value={emailInput}
+                  onChange={e => { setEmailInput(e.target.value); setEmailError(''); setInviteEmail(null) }}
+                  onKeyDown={e => e.key === 'Enter' && handleEmailInvite()}
+                  autoComplete="off"
+                />
+                <button className="circle-email-send-btn" onClick={handleEmailInvite}>Invite</button>
               </div>
-              <div>
-                <p className="circle-profile-name">{profileUser.name}</p>
-                <p className="circle-profile-zodiac">{profileUser.zodiac} Dream Circle member</p>
-              </div>
-            </div>
-            <div className="circle-profile-actions">
-              <button
-                className="circle-profile-action-btn circle-profile-follow"
-                onClick={() => { onFollowUser?.(profileUser.id, profileUser.name); setProfileUser(null) }}
-              >
-                Follow
-              </button>
-              {!circle.memberIds.includes(profileUser.id) ? (
-                <button
-                  className="circle-profile-action-btn circle-profile-add"
-                  onClick={() => { toggleMember(profileUser.id); setProfileUser(null) }}
-                >
-                  Add to Circle
-                </button>
-              ) : (
-                <button
-                  className="circle-profile-action-btn circle-profile-remove-circle"
-                  onClick={() => { toggleMember(profileUser.id); setProfileUser(null) }}
-                >
-                  Remove from Circle
-                </button>
+              {emailError && <p className="circle-email-error">{emailError}</p>}
+              {inviteEmail && (
+                <div className="circle-invite-notfound">
+                  <p className="circle-email-error">No account found for {inviteEmail}.</p>
+                  <a
+                    className="circle-invite-app-btn"
+                    href={`mailto:${inviteEmail}?subject=Join me on Reverie&body=Hey! I've been using Reverie to record and share my dreams. Come join me — download it at https://speakwithdreams.vercel.app`}
+                  >
+                    Send app invite to {inviteEmail}
+                  </a>
+                </div>
               )}
+              {invitations.length > 0 && (
+                <div className="circle-invitations-list">
+                  {invitations.map(inv => (
+                    <div key={inv.userId} className="circle-inv-row">
+                      <span className="circle-inv-name">{inv.email}</span>
+                      <span className={`circle-inv-status circle-inv-${inv.status}`}>{inv.status}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="circle-sheet-footer">
+              <button className="circle-sheet-send-btn" onClick={() => setShowAdd(false)}>Done</button>
             </div>
           </div>
         </>
       )}
+
 
     </div>
   )
