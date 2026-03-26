@@ -8,18 +8,9 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
 import { getFirestore, doc, setDoc, collection, query, getDocs, deleteDoc, onSnapshot, serverTimestamp, orderBy, where, limit, getDoc, updateDoc, increment, arrayUnion } from 'firebase/firestore'
 import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging'
 
-// Use the app's own hostname as authDomain in production to avoid Chrome's
-// bounce-tracking mitigation (which deletes Firebase's auth state when it
-// passes through dream-app-42fba.firebaseapp.com mid-redirect).
-// Vercel proxies /__/auth/* → dream-app-42fba.firebaseapp.com/__/auth/*
-// so Firebase redirect auth works entirely on speakwithdreams.vercel.app.
-const authDomain = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
-  ? window.location.hostname
-  : (import.meta.env.VITE_FB_AUTH_DOMAIN ?? '')
-
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FB_API_KEY            ?? '',
-  authDomain,
+  authDomain:        import.meta.env.VITE_FB_AUTH_DOMAIN        ?? '',
   projectId:         import.meta.env.VITE_FB_PROJECT_ID         ?? '',
   storageBucket:     import.meta.env.VITE_FB_STORAGE_BUCKET     ?? '',
   messagingSenderId: import.meta.env.VITE_FB_MESSAGING_SENDER_ID ?? '',

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   auth, CONFIGURED,
-  GoogleAuthProvider, signInWithRedirect, getRedirectResult, fbSignOut,
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, fbSignOut,
   onAuthStateChanged, type FBUser,
 } from '../lib/firebase'
 
@@ -48,9 +48,25 @@ export function useFirebaseAuth(): FirebaseAuthState {
     if (!auth) return
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
-    // Use redirect-only: Google's OAuth server sends COOP:same-origin which blocks
-    // popup window polling regardless of our COOP header, causing ~40s timeouts.
-    await signInWithRedirect(auth, provider)
+
+    // Strategy: popup first (no redirect chain = no bounce-tracking issues).
+    // Firebase v10+ uses BroadcastChannel for popup messaging, so COOP on
+    // Google's server no longer causes 40s hangs.
+    // If the popup is blocked or fails for any reason, fall back to redirect.
+    try {
+      await signInWithPopup(auth, provider)
+    } catch (err: any) {
+      const code = err?.code ?? ''
+      // popup-blocked: browser blocked the window — fall through to redirect
+      // cancelled-popup-request: user clicked sign-in twice — ignore silently
+      // popup-closed-by-user: user closed it — don't redirect, let them retry
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        return
+      }
+      // For any other error (popup blocked, network, COOP timeout, etc.) — use redirect
+      console.warn('[auth] popup failed, falling back to redirect:', code)
+      await signInWithRedirect(auth, provider)
+    }
   }
 
   async function signOut() {
