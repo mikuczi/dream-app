@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── User profiles ──────────────────────────────────────
+    // Any signed-in user can READ profiles (needed for email lookup / circle invites).
+    // Only the owner can WRITE their own profile.
+    match /users/{uid} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth.uid == uid;
+    }
+
+    // ── User subcollections (dreams, circles, invitations, etc.)
+    // Only the owner can access their own subcollections.
+    match /users/{uid}/{sub}/{docId} {
+      allow read, write: if request.auth.uid == uid;
+    }
+
+    // ── Public / circle feed ───────────────────────────────
+    // Any signed-in user can read feed posts.
+    // Any signed-in user can write (create / update / delete) feed posts.
+    match /feed/{postId} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // ── Feed subcollections (comments, likes) ──────────────
+    match /feed/{postId}/{sub}/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ── App config (whitelist, etc.) ───────────────────────
+    // Signed-in users can read config. No client writes.
+    match /config/{docId} {
+      allow read:  if request.auth != null;
+      allow write: if false;
+    }
+
+  }
+}

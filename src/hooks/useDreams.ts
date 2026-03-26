@@ -74,7 +74,7 @@ export function useDreams(uid?: string | null) {
       if (uid) saveLocalForUser(uid, updated)
       return updated
     })
-    if (uid) fsSave(uid, dream).catch(console.error)
+    if (uid) fsSave(uid, dream).catch(err => console.error('[saveDream] Firestore write failed (check rules):', err.code, err.message))
   }, [uid])
 
   const getDream = useCallback(
@@ -88,7 +88,7 @@ export function useDreams(uid?: string | null) {
       if (uid) {
         saveLocalForUser(uid, updated)
         const full = updated.find(d => d.id === id)
-        if (full) fsSave(uid, full).catch(console.error)
+        if (full) fsSave(uid, full).catch(err => console.error('[updateDream] Firestore write failed (check rules):', err.code, err.message))
       }
       return updated
     })
