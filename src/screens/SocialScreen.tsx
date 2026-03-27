@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import './SocialScreen.css'
 import type { CommunityDream } from '../data/mockCommunity'
+import { FEED_DREAMS, COMMUNITY_USERS } from '../data/mockCommunity'
 import type { Dream, Comment, AppNotification, FeedPost } from '../types/dream'
 import { getSharedPatterns } from '../utils/dreamConnections'
 import type { DreamCircle } from './DreamCircleScreen'
@@ -62,22 +63,33 @@ export function SocialScreen({ onOpenMyStory, onAddStory, myName, myAvatar, mySt
 
   useEffect(() => {
     return subscribePublicFeed(30, posts => {
-      setLiveFeed(posts.map(feedPostToCommunityDream))
+      // Use real Firestore data when available; fall back to mock content
+      // so the feed never looks empty to a first-time user.
+      setLiveFeed(posts.length > 0 ? posts.map(feedPostToCommunityDream) : FEED_DREAMS)
       setFeedLoading(false)
     })
   }, [])
 
-  // Real story strip from Firestore
+  // Real story strip from Firestore; fall back to mock story authors
   useEffect(() => {
     fetchActiveStories(20).then(posts => {
       const map = new Map<string, { name: string; photo?: string }>()
-      posts.forEach(p => {
-        if (p.authorId !== currentUserId) {
-          map.set(p.authorId, { name: p.authorName, photo: p.authorPhoto })
-        }
-      })
+      if (posts.length > 0) {
+        posts.forEach(p => {
+          if (p.authorId !== currentUserId) {
+            map.set(p.authorId, { name: p.authorName, photo: p.authorPhoto })
+          }
+        })
+      } else {
+        // No live stories yet — seed the strip with mock users so it isn't empty
+        COMMUNITY_USERS.forEach(u => map.set(u.id, { name: u.name }))
+      }
       setLiveStoryUsers(map)
-    }).catch(() => {})
+    }).catch(() => {
+      COMMUNITY_USERS.forEach(u => {
+        setLiveStoryUsers(prev => new Map([...prev, [u.id, { name: u.name }]]))
+      })
+    })
   }, [currentUserId])
 
   // Circle feed from Firestore
